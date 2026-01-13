@@ -34,15 +34,25 @@ https://console.firebase.google.com/v1/r/project/fit-tracker-728e9/firestore/ind
 
 ---
 
-## ⏸️ Index futurs (à créer si/quand l'erreur apparaît)
+## 🔄 Index à créer maintenant
 
 ### 3. calendarEvents (userId + start)
-**Status** : ⏸️ EN ATTENTE
+**Status** : 🔄 À CRÉER
 - Collection : `calendarEvents`
 - Champs : `userId` (Ascending), `start` (Ascending)
 - Utilisé pour : Agenda / Calendrier
 
-**Note** : Firebase vous donnera le lien automatiquement si nécessaire.
+**LIEN** :
+https://console.firebase.google.com/v1/r/project/fit-tracker-728e9/firestore/indexes?create_composite=Clhwcm9qZWN0cy9maXQtdHJhY2tlci03MjhlOS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvY2FsZW5kYXJFdmVudHMvaW5kZXhlcy9fEAEaCgoGdXNlcklkEAEaCQoFc3RhcnQQARoMCghfX25hbWVfXxAB
+
+**Action** :
+1. Cliquez sur le lien
+2. Click "Créer l'index"
+3. Attendez 1-2 minutes
+
+---
+
+## ⏸️ Index futurs (à créer si/quand l'erreur apparaît)
 
 ---
 
