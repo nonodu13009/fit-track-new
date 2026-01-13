@@ -97,9 +97,18 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.6 }}
-            className="mt-12 text-sm text-green-400"
+            className="mt-12"
           >
-            ✅ Phase 0 - Setup complet
+            <div className="mb-2 text-sm font-semibold text-green-400">
+              ✅ MVP Complet à 65%
+            </div>
+            <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
+              <span>Auth ✓</span>
+              <span>Journal ✓</span>
+              <span>Agenda ✓</span>
+              <span>Coach IA ✓</span>
+              <span>Nutrition ✓</span>
+            </div>
           </motion.div>
         </motion.div>
       </div>
