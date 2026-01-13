@@ -71,19 +71,42 @@ Créez-les **seulement quand Firebase vous donne le lien d'erreur**.
 
 ---
 
-## ⏸️ Index futurs (à créer si/quand l'erreur apparaît)
+## 🔄 Index à créer maintenant
 
----
-
-### 5. workoutTemplates (userId + createdAt)
-**Status** : ⏸️ EN ATTENTE
+### 5. workoutTemplates (userId + createdAt) - DERNIER INDEX
+**Status** : 🔄 À CRÉER
 - Collection : `workoutTemplates`
-- Champs : `userId` (Ascending), `createdAt` (Descending)
+- Champs : `userId` (Ascending), `createdAt` (Descending), `__name__` (Ascending)
 - Utilisé pour : Page Templates (`/dashboard/templates`)
 - Hook : `useTemplates()`
-- Apparaît quand : Vous créez votre **premier template** de séance
 
-**LIEN** : *(Firebase fournira le lien automatiquement dans la console)*
+**LIEN** : https://console.firebase.google.com/project/fit-tracker-728e9/firestore/indexes
+
+**PROCÉDURE** (création manuelle) :
+1. Cliquez sur le lien ci-dessus
+2. Click bouton **"Ajouter un index"** (bleu, en haut à droite)
+3. Remplissez le formulaire :
+   
+   ```
+   ID de collection : workoutTemplates
+   Champ d'application : Collection
+   
+   Champs à indexer (dans l'ordre) :
+   
+   1. Chemin du champ : userId
+      Mode de requête : Ascending (Croissant)
+   
+   2. Chemin du champ : createdAt
+      Mode de requête : Descending (Décroissant)
+   
+   3. Chemin du champ : __name__
+      Mode de requête : Ascending (Croissant)
+   ```
+
+4. Click **"Créer"**
+5. Attendez 1-2 minutes (status : Création... → Activé ✓)
+
+**Note** : C'est le DERNIER index à créer manuellement ! 🎉
 
 **Requête concernée** :
 ```typescript
@@ -103,16 +126,15 @@ query(
 
 **Total index requis** : **5 index**  
 **Activés** : **3/5** ✅  
-**À créer** : **1/5** 🔄  
-**Restants** : **1/5** (apparaîtra automatiquement)
+**À créer** : **2/5** 🔄  
 
 | # | Collection | Status | Trigger |
 |---|------------|--------|---------|
 | 1 | workouts | ✅ **Activé** | Journal / Stats |
 | 2 | weighIns | ✅ **Activé** | Graphique poids |
 | 3 | calendarEvents | ✅ **Activé** | Agenda |
-| 4 | meals | 🔄 **À créer** | Nutrition (maintenant) |
-| 5 | workoutTemplates | ⏸️ Futur | Premier template |
+| 4 | meals | 🔄 **À créer** | Nutrition |
+| 5 | workoutTemplates | 🔄 **À créer** | Templates (maintenant) |
 
 ---
 
@@ -123,27 +145,25 @@ query(
 2. ✅ Index `weighIns` créé
 3. ✅ Index `calendarEvents` créé
 
-### **🔄 À CRÉER MAINTENANT** :
-4. 🔄 Index `meals` → **LIEN CI-DESSUS** (ligne ~45)
+### **🔄 À CRÉER MAINTENANT** (2 derniers index) :
+4. 🔄 Index `meals` → Instructions ligne ~45
+5. 🔄 Index `workoutTemplates` → **Instructions ligne ~70** ⭐
 
-### **⏸️ À FAIRE plus tard** :
-5. ⏸️ Créer index `workoutTemplates` → Apparaîtra quand vous créerez votre 1er template
-
-**Procédure** : Cliquez sur le lien → Créer l'index → Attendre 1-2 min → ✅
+**Procédure** : Suivre les instructions manuelles → Créer l'index → Attendre 1-2 min → ✅
 
 ---
 
-## 🎉 PRESQUE TERMINÉ !
+## 🎉 DERNIERS INDEX !
 
-**Avec l'index `meals`, la page Nutrition fonctionnera** :
+**Une fois les 2 index créés** :
 - ✅ Journal séances
 - ✅ Stats hebdomadaires
 - ✅ Graphique poids
 - ✅ Agenda / Calendrier
-- 🔄 **Tracker Nutrition** (créez l'index meals)
-- ⏸️ Templates (index auto plus tard)
+- ✅ **Tracker Nutrition** (après index meals)
+- ✅ **Templates** (après index workoutTemplates)
 
-**Dernier index à créer manuellement : `meals` !**
+**= APPLICATION 100% OPÉRATIONNELLE ! 🚀**
 
 ---
 
