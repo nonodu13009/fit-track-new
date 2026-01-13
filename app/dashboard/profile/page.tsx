@@ -37,7 +37,14 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [selectedSports, setSelectedSports] = useState<Sport[]>([]);
 
-  const form = useForm();
+  const form = useForm({
+    defaultValues: {
+      weight: 0,
+      height: 0,
+      dateOfBirth: "",
+      objectiveDescription: "",
+    },
+  });
 
   // Charger le profil
   useEffect(() => {
@@ -65,6 +72,7 @@ export default function ProfilePage() {
     };
 
     loadProfile();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const toggleSport = (sportId: string, sportName: string) => {
