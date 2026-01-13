@@ -60,19 +60,72 @@ https://console.firebase.google.com/v1/r/project/fit-tracker-728e9/firestore/ind
 **Status** : ⏸️ EN ATTENTE
 - Collection : `workoutTemplates`
 - Champs : `userId` (Ascending), `createdAt` (Descending)
-- Utilisé pour : Page Templates
+- Utilisé pour : Page Templates (`/dashboard/templates`)
+- Hook : `useTemplates()`
+- Apparaît quand : Vous créez votre **premier template** de séance
 
-**Note** : Firebase vous donnera le lien automatiquement si nécessaire.
+**LIEN** : *(Firebase fournira le lien automatiquement dans la console)*
+
+**Requête concernée** :
+```typescript
+query(
+  collection(db, "workoutTemplates"),
+  where("userId", "==", user.uid),
+  orderBy("createdAt", "desc")
+)
+```
 
 ---
 
-### 5. meals (userId + date)
+### 5. meals (userId + date) - REQUÊTE COMPLEXE
 **Status** : ⏸️ EN ATTENTE
 - Collection : `meals`
-- Champs : `userId` (Ascending), `date` (Descending)
-- Utilisé pour : Page Nutrition
+- Champs : `userId` (Ascending), `date` (Ascending ou Descending)
+- Utilisé pour : Page Nutrition (`/dashboard/nutrition`)
+- Hook : `useMeals()`
+- Apparaît quand : Vous loggez votre **premier repas**
 
-**Note** : Firebase vous donnera le lien automatiquement si nécessaire.
+**LIEN** : *(Firebase fournira le lien automatiquement dans la console)*
+
+**Requête concernée** :
+```typescript
+query(
+  collection(db, "meals"),
+  where("userId", "==", user.uid),
+  where("date", ">=", dayStart),
+  where("date", "<=", dayEnd),
+  orderBy("date", "desc")
+)
+```
+
+**Note spéciale** : Cette requête est complexe car elle utilise des **range queries** (>=, <=) sur `date`. Firebase créera automatiquement l'index optimal.
+
+---
+
+## 📊 RÉSUMÉ COMPLET
+
+**Total index requis** : **5 index**
+
+| # | Collection | Status | Trigger |
+|---|------------|--------|---------|
+| 1 | workouts | ✅ Activé | Journal / Stats |
+| 2 | weighIns | ✅ Activé | Graphique poids |
+| 3 | calendarEvents | 🔄 À créer | Agenda (maintenant) |
+| 4 | workoutTemplates | ⏸️ Futur | Premier template |
+| 5 | meals | ⏸️ Futur | Premier repas |
+
+---
+
+## 🎯 PLAN D'ACTION
+
+### **Maintenant** :
+1. ✅ Créer index `calendarEvents` (lien ligne 46)
+
+### **Plus tard** (au fil de l'utilisation) :
+2. ⏸️ Créer index `workoutTemplates` (quand erreur apparaît)
+3. ⏸️ Créer index `meals` (quand erreur apparaît)
+
+**Procédure** : Firebase vous donnera les liens exacts quand nécessaire → Cliquez dessus → Créer → Attendre 1-2 min → ✅
 
 ---
 
