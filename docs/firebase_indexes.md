@@ -34,22 +34,40 @@ Créez-les **seulement quand Firebase vous donne le lien d'erreur**.
 
 ## 🔄 Index à créer maintenant
 
-### 4. meals (userId + date) - REQUÊTE COMPLEXE
+### 4. meals (userId + date) - CRÉATION MANUELLE
 **Status** : 🔄 À CRÉER
 - Collection : `meals`
-- Champs : `userId` (Ascending), `date` (Ascending/Descending)
+- Champs : `userId` (Ascending), `date` (Ascending), `__name__` (Ascending)
 - Utilisé pour : Page Nutrition (`/dashboard/nutrition`)
 - Hook : `useMeals()`
 
-**LIEN** :
-https://console.firebase.google.com/v1/r/project/fit-tracker-728e9/firestore/indexes?create_composite=Clpwcm9qZWN0cy9maXQtdHJhY2tlci03MjhlOS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvbWVhbHMvaW5kZXhlcy9fEAEaCgoGdXNlcklkEAEaCAoEZGF0ZRADGgwKCF9fbmFtZV9fEAI
+**LIEN** : https://console.firebase.google.com/project/fit-tracker-728e9/firestore/indexes
 
-**Action** :
-1. Cliquez sur le lien
-2. Click "Créer l'index"
-3. Attendez 1-2 minutes
+**PROCÉDURE** (création manuelle) :
+1. Cliquez sur le lien ci-dessus
+2. Click bouton **"Ajouter un index"** (bleu, en haut à droite)
+3. Remplissez le formulaire :
+   
+   ```
+   ID de collection : meals
+   Champ d'application : Collection
+   
+   Champs à indexer (dans l'ordre) :
+   
+   1. Chemin du champ : userId
+      Mode de requête : Ascending (Croissant)
+   
+   2. Chemin du champ : date
+      Mode de requête : Ascending (Croissant)
+   
+   3. Chemin du champ : __name__
+      Mode de requête : Ascending (Croissant)
+   ```
 
-**Note** : Cette requête utilise des range queries (>=, <=) sur date. L'index sera créé automatiquement par Firebase.
+4. Click **"Créer"**
+5. Attendez 1-2 minutes (status : Création... → Activé ✓)
+
+**Note** : Le lien de pré-remplissage automatique ne fonctionne pas pour cette collection. Création manuelle requise.
 
 ---
 
