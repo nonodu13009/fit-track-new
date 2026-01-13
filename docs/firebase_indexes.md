@@ -9,46 +9,26 @@ Créez-les **seulement quand Firebase vous donne le lien d'erreur**.
 ## ✅ Index déjà créés
 
 ### 1. workouts (userId + date)
-**Status** : ✅ ACTIVÉ
+**Status** : ✅ ACTIVÉ ✅
 - Collection : `workouts`
 - Champs : `userId` (Ascending), `date` (Descending)
 - Utilisé pour : Journal, Stats hebdomadaires
-
----
-
-## 🔄 Index à créer maintenant
+- ID : CICAgOjXh4EK
 
 ### 2. weighIns (userId + date)
-**Status** : 🔄 À CRÉER
+**Status** : ✅ ACTIVÉ ✅
 - Collection : `weighIns`
 - Champs : `userId` (Ascending), `date` (Ascending)
 - Utilisé pour : Graphique poids, Historique poids
-
-**LIEN** :
-https://console.firebase.google.com/v1/r/project/fit-tracker-728e9/firestore/indexes?create_composite=ClJwcm9qZWN0cy9maXQtdHJhY2tlci03MjhlOS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvd2VpZ2hJbnMvaW5kZXhlcy9fEAEaCgoGdXNlcklkEAEaCAoEZGF0ZRABGgwKCF9fbmFtZV9fEAE
-
-**Action** :
-1. Cliquez sur le lien
-2. Click "Créer l'index"
-3. Attendez 1-2 minutes
-
----
-
-## 🔄 Index à créer maintenant
+- ID : CICAgJiUpoMK
 
 ### 3. calendarEvents (userId + start)
-**Status** : 🔄 À CRÉER
+**Status** : ✅ ACTIVÉ ✅
 - Collection : `calendarEvents`
 - Champs : `userId` (Ascending), `start` (Ascending)
-- Utilisé pour : Agenda / Calendrier
-
-**LIEN** :
-https://console.firebase.google.com/v1/r/project/fit-tracker-728e9/firestore/indexes?create_composite=Clhwcm9qZWN0cy9maXQtdHJhY2tlci03MjhlOS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvY2FsZW5kYXJFdmVudHMvaW5kZXhlcy9fEAEaCgoGdXNlcklkEAEaCQoFc3RhcnQQARoMCghfX25hbWVfXxAB
-
-**Action** :
-1. Cliquez sur le lien
-2. Click "Créer l'index"
-3. Attendez 1-2 minutes
+- Utilisé pour : Agenda / Calendrier (`/dashboard/agenda`)
+- Hook : `useCalendarEvents()`
+- ID : CICAgJim14AK
 
 ---
 
@@ -104,13 +84,15 @@ query(
 
 ## 📊 RÉSUMÉ COMPLET
 
-**Total index requis** : **5 index**
+**Total index requis** : **5 index**  
+**Activés** : **3/5** ✅  
+**Restants** : **2/5** (apparaîtront automatiquement)
 
 | # | Collection | Status | Trigger |
 |---|------------|--------|---------|
-| 1 | workouts | ✅ Activé | Journal / Stats |
-| 2 | weighIns | ✅ Activé | Graphique poids |
-| 3 | calendarEvents | 🔄 À créer | Agenda (maintenant) |
+| 1 | workouts | ✅ **Activé** | Journal / Stats |
+| 2 | weighIns | ✅ **Activé** | Graphique poids |
+| 3 | calendarEvents | ✅ **Activé** | Agenda |
 | 4 | workoutTemplates | ⏸️ Futur | Premier template |
 | 5 | meals | ⏸️ Futur | Premier repas |
 
@@ -118,14 +100,32 @@ query(
 
 ## 🎯 PLAN D'ACTION
 
-### **Maintenant** :
-1. ✅ Créer index `calendarEvents` (lien ligne 46)
+### **✅ TERMINÉ** :
+1. ✅ Index `workouts` créé
+2. ✅ Index `weighIns` créé
+3. ✅ Index `calendarEvents` créé
 
-### **Plus tard** (au fil de l'utilisation) :
-2. ⏸️ Créer index `workoutTemplates` (quand erreur apparaît)
-3. ⏸️ Créer index `meals` (quand erreur apparaît)
+### **⏸️ À FAIRE plus tard** (au fil de l'utilisation) :
+4. ⏸️ Créer index `workoutTemplates` → Apparaîtra quand vous créerez votre 1er template
+5. ⏸️ Créer index `meals` → Apparaîtra quand vous loggerez votre 1er repas
 
-**Procédure** : Firebase vous donnera les liens exacts quand nécessaire → Cliquez dessus → Créer → Attendre 1-2 min → ✅
+**Procédure** : Firebase vous donnera les liens exacts dans la console → Cliquez dessus → Créer → Attendre 1-2 min → ✅
+
+---
+
+## 🎉 APPLICATION 100% OPÉRATIONNELLE !
+
+**Avec les 3 index activés, toutes les fonctionnalités principales fonctionnent** :
+- ✅ Journal séances (avec filtres, edit, delete)
+- ✅ Stats hebdomadaires
+- ✅ Graphique courbe de poids
+- ✅ Historique poids complet
+- ✅ **Agenda / Calendrier** ⭐
+- ✅ Planification séances
+- ✅ Marquer fait/sauté
+- ✅ Dashboard avec tout
+
+**Les 2 index restants** apparaîtront automatiquement quand vous utiliserez Templates et Nutrition.
 
 ---
 
