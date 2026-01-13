@@ -25,7 +25,7 @@ export const InputPassword = forwardRef<HTMLInputElement, InputPasswordProps>(
         <button
           type="button"
           onClick={togglePasswordVisibility}
-          className="absolute right-3 top-[50%] -translate-y-[50%] text-gray-400 transition-colors hover:text-white focus:outline-none"
+          className="absolute bottom-0 right-3 top-0 my-auto flex h-10 items-center text-gray-400 transition-colors hover:text-white focus:outline-none"
           aria-label={
             showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"
           }
