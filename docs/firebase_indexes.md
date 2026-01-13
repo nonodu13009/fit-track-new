@@ -32,11 +32,32 @@ Créez-les **seulement quand Firebase vous donne le lien d'erreur**.
 
 ---
 
+## 🔄 Index à créer maintenant
+
+### 4. meals (userId + date) - REQUÊTE COMPLEXE
+**Status** : 🔄 À CRÉER
+- Collection : `meals`
+- Champs : `userId` (Ascending), `date` (Ascending/Descending)
+- Utilisé pour : Page Nutrition (`/dashboard/nutrition`)
+- Hook : `useMeals()`
+
+**LIEN** :
+https://console.firebase.google.com/v1/r/project/fit-tracker-728e9/firestore/indexes?create_composite=Clpwcm9qZWN0cy9maXQtdHJhY2tlci03MjhlOS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvbWVhbHMvaW5kZXhlcy9fEAEaCgoGdXNlcklkEAEaCAoEZGF0ZRADGgwKCF9fbmFtZV9fEAI
+
+**Action** :
+1. Cliquez sur le lien
+2. Click "Créer l'index"
+3. Attendez 1-2 minutes
+
+**Note** : Cette requête utilise des range queries (>=, <=) sur date. L'index sera créé automatiquement par Firebase.
+
+---
+
 ## ⏸️ Index futurs (à créer si/quand l'erreur apparaît)
 
 ---
 
-### 4. workoutTemplates (userId + createdAt)
+### 5. workoutTemplates (userId + createdAt)
 **Status** : ⏸️ EN ATTENTE
 - Collection : `workoutTemplates`
 - Champs : `userId` (Ascending), `createdAt` (Descending)
@@ -57,28 +78,6 @@ query(
 
 ---
 
-### 5. meals (userId + date) - REQUÊTE COMPLEXE
-**Status** : ⏸️ EN ATTENTE
-- Collection : `meals`
-- Champs : `userId` (Ascending), `date` (Ascending ou Descending)
-- Utilisé pour : Page Nutrition (`/dashboard/nutrition`)
-- Hook : `useMeals()`
-- Apparaît quand : Vous loggez votre **premier repas**
-
-**LIEN** : *(Firebase fournira le lien automatiquement dans la console)*
-
-**Requête concernée** :
-```typescript
-query(
-  collection(db, "meals"),
-  where("userId", "==", user.uid),
-  where("date", ">=", dayStart),
-  where("date", "<=", dayEnd),
-  orderBy("date", "desc")
-)
-```
-
-**Note spéciale** : Cette requête est complexe car elle utilise des **range queries** (>=, <=) sur `date`. Firebase créera automatiquement l'index optimal.
 
 ---
 
@@ -86,15 +85,16 @@ query(
 
 **Total index requis** : **5 index**  
 **Activés** : **3/5** ✅  
-**Restants** : **2/5** (apparaîtront automatiquement)
+**À créer** : **1/5** 🔄  
+**Restants** : **1/5** (apparaîtra automatiquement)
 
 | # | Collection | Status | Trigger |
 |---|------------|--------|---------|
 | 1 | workouts | ✅ **Activé** | Journal / Stats |
 | 2 | weighIns | ✅ **Activé** | Graphique poids |
 | 3 | calendarEvents | ✅ **Activé** | Agenda |
-| 4 | workoutTemplates | ⏸️ Futur | Premier template |
-| 5 | meals | ⏸️ Futur | Premier repas |
+| 4 | meals | 🔄 **À créer** | Nutrition (maintenant) |
+| 5 | workoutTemplates | ⏸️ Futur | Premier template |
 
 ---
 
@@ -105,27 +105,27 @@ query(
 2. ✅ Index `weighIns` créé
 3. ✅ Index `calendarEvents` créé
 
-### **⏸️ À FAIRE plus tard** (au fil de l'utilisation) :
-4. ⏸️ Créer index `workoutTemplates` → Apparaîtra quand vous créerez votre 1er template
-5. ⏸️ Créer index `meals` → Apparaîtra quand vous loggerez votre 1er repas
+### **🔄 À CRÉER MAINTENANT** :
+4. 🔄 Index `meals` → **LIEN CI-DESSUS** (ligne ~45)
 
-**Procédure** : Firebase vous donnera les liens exacts dans la console → Cliquez dessus → Créer → Attendre 1-2 min → ✅
+### **⏸️ À FAIRE plus tard** :
+5. ⏸️ Créer index `workoutTemplates` → Apparaîtra quand vous créerez votre 1er template
+
+**Procédure** : Cliquez sur le lien → Créer l'index → Attendre 1-2 min → ✅
 
 ---
 
-## 🎉 APPLICATION 100% OPÉRATIONNELLE !
+## 🎉 PRESQUE TERMINÉ !
 
-**Avec les 3 index activés, toutes les fonctionnalités principales fonctionnent** :
-- ✅ Journal séances (avec filtres, edit, delete)
+**Avec l'index `meals`, la page Nutrition fonctionnera** :
+- ✅ Journal séances
 - ✅ Stats hebdomadaires
-- ✅ Graphique courbe de poids
-- ✅ Historique poids complet
-- ✅ **Agenda / Calendrier** ⭐
-- ✅ Planification séances
-- ✅ Marquer fait/sauté
-- ✅ Dashboard avec tout
+- ✅ Graphique poids
+- ✅ Agenda / Calendrier
+- 🔄 **Tracker Nutrition** (créez l'index meals)
+- ⏸️ Templates (index auto plus tard)
 
-**Les 2 index restants** apparaîtront automatiquement quand vous utiliserez Templates et Nutrition.
+**Dernier index à créer manuellement : `meals` !**
 
 ---
 
