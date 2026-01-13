@@ -25,13 +25,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Timeout de sécurité : si Firebase ne répond pas en 5s, débloquer
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn("Firebase Auth timeout - déblocage forcé");
+        setLoading(false);
+      }
+    }, 5000);
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      clearTimeout(timeout);
       setUser(user);
       setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      clearTimeout(timeout);
+      unsubscribe();
+    };
+  }, [loading]);
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
