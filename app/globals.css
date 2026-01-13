@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Colors */
+  --background: #050505;
+  --foreground: #ffffff;
+  --surface: #0f1115;
+  --elevated: #1a1d23;
+
+  /* Accents */
+  --accent-cyan: #22d3ee;
+  --accent-purple: #a855f7;
+  --accent-lime: #a3e635;
+}
+
+@layer base {
+  * {
+    @apply border-white/10;
+  }
+
+  body {
+    @apply bg-deep-black text-white antialiased;
+  }
+
+  /* Scrollbar personnalisé */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-surface;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-elevated rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-accent-purple/50;
+  }
+}
+
+@layer components {
+  /* Classe glassmorphism réutilisable */
+  .glass {
+    @apply bg-elevated/60 backdrop-blur-md border border-white/10;
+  }
+
+  /* Classe pour les cartes */
+  .card {
+    @apply bg-surface rounded-xl p-4;
+  }
+
+  .card-elevated {
+    @apply bg-elevated rounded-xl p-4;
+  }
+
+  /* Gradients de texte */
+  .text-gradient {
+    @apply bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-purple {
+    @apply bg-gradient-to-r from-accent-purple to-indigo-600 bg-clip-text text-transparent;
+  }
+}
+
+@layer utilities {
+  /* Animations personnalisées */
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
