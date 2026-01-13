@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { House, Notebook, Calendar, ChatCircle } from "@phosphor-icons/react";
+import { House, Notebook, Calendar, ChatCircle, User } from "@phosphor-icons/react";
 
 const NAV_ITEMS = [
   {
@@ -25,6 +25,11 @@ const NAV_ITEMS = [
     label: "Coach",
     href: "/dashboard/coach",
     icon: ChatCircle,
+  },
+  {
+    label: "Profil",
+    href: "/dashboard/profile",
+    icon: User,
   },
 ];
 
