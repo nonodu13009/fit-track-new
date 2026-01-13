@@ -25,11 +25,17 @@ export default function CoachPage() {
   const [inputValue, setInputValue] = useState("");
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll vers le bas
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Auto-focus sur le textarea au chargement
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -294,6 +300,7 @@ export default function CoachPage() {
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
           <textarea
+            ref={textareaRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
