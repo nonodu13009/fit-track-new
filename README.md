@@ -63,8 +63,8 @@ npm run format:check
 ```
 /app                    # Next.js App Router
   /api                  # API Routes (serveur)
-  /(auth)               # Routes d'authentification
-  /(dashboard)          # Routes protégées
+  /auth                 # Routes d'authentification
+  /dashboard            # Routes protégées
   layout.tsx            # Layout racine
   page.tsx              # Page d'accueil
   globals.css           # Styles globaux
@@ -73,17 +73,25 @@ npm run format:check
   /ui                   # Composants UI de base (Button, Card, etc.)
   /layout               # Layout components (Nav, Header, etc.)
   /features             # Composants métier
+  /providers            # Context providers
 
 /lib                    # Logique métier & utils
   /firebase             # Configuration Firebase
   /mistral              # Configuration Mistral AI
+  /data                 # Base de données (44 ingrédients)
   /utils                # Fonctions utilitaires
+  /validations          # Schémas Zod
 
 /types                  # Types TypeScript globaux
 /hooks                  # Hooks React personnalisés
 /constants              # Constantes (couleurs, config, etc.)
 /public                 # Assets statiques
 /docs                   # Documentation
+
+# Fichiers Firebase (racine)
+firestore.rules         # Règles de sécurité Firestore
+firestore.indexes.json  # Configuration des index
+firebase.json           # Configuration Firebase CLI
 ```
 
 ---

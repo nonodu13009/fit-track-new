@@ -8,12 +8,12 @@
 
 ## 🎯 PROCÉDURE RAPIDE (2 minutes)
 
-### **Méthode 1 : Via Console Firebase** ⭐ RECOMMANDÉE
+### **Méthode 1 : Via Console Firebase** ⭐ RECOMMANDÉE (2 min)
 
 1. **Aller sur Firebase Console** :
    https://console.firebase.google.com/project/fit-tracker-728e9/firestore/rules
 
-2. **Copier le contenu** du fichier `docs/firestore.rules`
+2. **Copier le contenu** du fichier `firestore.rules` (à la racine du projet)
 
 3. **Coller** dans l'éditeur de la console
 
@@ -23,24 +23,31 @@
 
 ---
 
-### **Méthode 2 : Via Firebase CLI**
+### **Méthode 2 : Via Firebase CLI** (5 min)
+
+**Note** : Les fichiers `firestore.rules` et `firebase.json` sont déjà à la racine du projet ! ✅
 
 ```bash
 # Installer Firebase CLI (si pas déjà fait)
 npm install -g firebase-tools
 
-# Se connecter
+# Se connecter à Firebase
 firebase login
 
-# Initialiser (si pas déjà fait)
-firebase init firestore
+# Déployer les rules ET les index
+firebase deploy --only firestore
 
-# Copier le fichier rules
-cp docs/firestore.rules firestore.rules
-
-# Déployer
+# OU seulement les rules
 firebase deploy --only firestore:rules
+
+# OU seulement les index
+firebase deploy --only firestore:indexes
 ```
+
+**Fichiers utilisés** :
+- `firestore.rules` (à la racine) → Rules de sécurité
+- `firestore.indexes.json` (à la racine) → Définition des 5 index
+- `firebase.json` (à la racine) → Configuration Firebase
 
 ---
 
