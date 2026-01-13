@@ -31,12 +31,21 @@ export default function CoachPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (inputValue.trim() && !isLoading) {
       sendMessage(inputValue);
       setInputValue("");
     }
+  };
+
+  // Gérer Enter vs Shift+Enter
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); // Empêcher le saut de ligne
+      handleSubmit();
+    }
+    // Si Shift+Enter, laisser le comportement par défaut (nouvelle ligne)
   };
 
   // Copier un message
@@ -284,23 +293,39 @@ export default function CoachPage() {
 
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
-          <input
-            type="text"
+          <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Posez votre question..."
+            onKeyDown={handleKeyDown}
+            placeholder="Posez votre question... (Entrée pour envoyer, Shift+Entrée pour nouvelle ligne)"
             disabled={isLoading}
-            className="flex-1 rounded-lg border border-white/10 bg-surface px-4 py-3 text-white placeholder:text-gray-600 transition-all focus:border-accent-purple focus:outline-none focus:ring-2 focus:ring-accent-purple/50 disabled:opacity-50"
+            rows={1}
+            className="flex-1 resize-none rounded-lg border border-white/10 bg-surface px-4 py-3 text-white placeholder:text-gray-600 transition-all focus:border-accent-purple focus:outline-none focus:ring-2 focus:ring-accent-purple/50 disabled:opacity-50"
+            style={{
+              minHeight: "48px",
+              maxHeight: "200px",
+              height: "auto",
+            }}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = "auto";
+              target.style.height = `${Math.min(target.scrollHeight, 200)}px`;
+            }}
           />
           <Button
             type="submit"
             disabled={!inputValue.trim() || isLoading}
             icon={<PaperPlaneRight size={20} weight="fill" />}
-            className="shrink-0"
+            className="shrink-0 self-end"
           >
             Envoyer
           </Button>
         </form>
+
+        {/* Hint */}
+        <p className="mt-2 text-xs text-gray-500">
+          💡 <strong>Entrée</strong> pour envoyer • <strong>Shift + Entrée</strong> pour nouvelle ligne
+        </p>
       </Card>
     </div>
   );
