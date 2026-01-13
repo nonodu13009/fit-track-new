@@ -1,0 +1,203 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================
+    // HELPER FUNCTIONS
+    // ========================================
+    
+    // Vérifier que l'utilisateur est authentifié
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Vérifier que l'utilisateur est le propriétaire
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Vérifier que le document appartient à l'utilisateur (ressource existante)
+    function isDocumentOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    // Vérifier que le nouveau document aura le bon userId
+    function hasCorrectUserId() {
+      return request.resource.data.userId == request.auth.uid;
+    }
+    
+    // ========================================
+    // USER PROFILES
+    // ========================================
+    
+    match /userProfiles/{userId} {
+      // Lecture : seulement son propre profil
+      allow read: if isOwner(userId);
+      
+      // Création : seulement pour soi-même lors du premier onboarding
+      allow create: if isOwner(userId) 
+        && hasCorrectUserId()
+        && request.resource.data.keys().hasAll(['email', 'sports', 'physical', 'objective', 'onboardingCompleted']);
+      
+      // Mise à jour : seulement son propre profil
+      allow update: if isOwner(userId);
+      
+      // Suppression : interdite (garder historique)
+      allow delete: if false;
+    }
+    
+    // ========================================
+    // WORKOUTS (Séances d'entraînement)
+    // ========================================
+    
+    match /workouts/{workoutId} {
+      // Lecture : seulement ses propres séances
+      allow read: if isAuthenticated() && isDocumentOwner();
+      
+      // Création : seulement pour soi-même
+      allow create: if isAuthenticated()
+        && hasCorrectUserId()
+        && request.resource.data.keys().hasAll(['userId', 'sport', 'duration', 'rpe', 'date']);
+      
+      // Mise à jour : seulement ses propres séances
+      allow update: if isAuthenticated() && isDocumentOwner();
+      
+      // Suppression : seulement ses propres séances
+      allow delete: if isAuthenticated() && isDocumentOwner();
+    }
+    
+    // ========================================
+    // WEIGH-INS (Pesées)
+    // ========================================
+    
+    match /weighIns/{weighInId} {
+      // Lecture : seulement ses propres pesées
+      allow read: if isAuthenticated() && isDocumentOwner();
+      
+      // Création : seulement pour soi-même
+      allow create: if isAuthenticated()
+        && hasCorrectUserId()
+        && request.resource.data.keys().hasAll(['userId', 'weight', 'date'])
+        && request.resource.data.weight is number
+        && request.resource.data.weight > 0
+        && request.resource.data.weight < 300; // Limite de sécurité
+      
+      // Mise à jour : seulement ses propres pesées
+      allow update: if isAuthenticated() && isDocumentOwner();
+      
+      // Suppression : seulement ses propres pesées
+      allow delete: if isAuthenticated() && isDocumentOwner();
+    }
+    
+    // ========================================
+    // MEASUREMENTS (Mesures corporelles)
+    // ========================================
+    
+    match /measurements/{measurementId} {
+      // Lecture : seulement ses propres mesures
+      allow read: if isAuthenticated() && isDocumentOwner();
+      
+      // Création : seulement pour soi-même
+      allow create: if isAuthenticated()
+        && hasCorrectUserId()
+        && request.resource.data.keys().hasAll(['userId', 'measurements', 'date']);
+      
+      // Mise à jour : seulement ses propres mesures
+      allow update: if isAuthenticated() && isDocumentOwner();
+      
+      // Suppression : seulement ses propres mesures
+      allow delete: if isAuthenticated() && isDocumentOwner();
+    }
+    
+    // ========================================
+    // WORKOUT TEMPLATES (Templates de séances)
+    // ========================================
+    
+    match /workoutTemplates/{templateId} {
+      // Lecture : seulement ses propres templates
+      allow read: if isAuthenticated() && isDocumentOwner();
+      
+      // Création : seulement pour soi-même
+      allow create: if isAuthenticated()
+        && hasCorrectUserId()
+        && request.resource.data.keys().hasAll(['userId', 'name', 'sport', 'duration']);
+      
+      // Mise à jour : seulement ses propres templates
+      allow update: if isAuthenticated() && isDocumentOwner();
+      
+      // Suppression : seulement ses propres templates
+      allow delete: if isAuthenticated() && isDocumentOwner();
+    }
+    
+    // ========================================
+    // CALENDAR EVENTS (Événements planifiés)
+    // ========================================
+    
+    match /calendarEvents/{eventId} {
+      // Lecture : seulement ses propres événements
+      allow read: if isAuthenticated() && isDocumentOwner();
+      
+      // Création : seulement pour soi-même
+      allow create: if isAuthenticated()
+        && hasCorrectUserId()
+        && request.resource.data.keys().hasAll(['userId', 'title', 'start', 'end', 'isAllDay', 'status'])
+        && request.resource.data.status in ['planned', 'done', 'skipped'];
+      
+      // Mise à jour : seulement ses propres événements
+      allow update: if isAuthenticated() && isDocumentOwner();
+      
+      // Suppression : seulement ses propres événements
+      allow delete: if isAuthenticated() && isDocumentOwner();
+    }
+    
+    // ========================================
+    // MEALS (Repas)
+    // ========================================
+    
+    match /meals/{mealId} {
+      // Lecture : seulement ses propres repas
+      allow read: if isAuthenticated() && isDocumentOwner();
+      
+      // Création : seulement pour soi-même
+      allow create: if isAuthenticated()
+        && hasCorrectUserId()
+        && request.resource.data.keys().hasAll(['userId', 'mealType', 'items', 'totalCalories', 'macros', 'date'])
+        && request.resource.data.mealType in ['breakfast', 'lunch', 'dinner', 'snack'];
+      
+      // Mise à jour : seulement ses propres repas
+      allow update: if isAuthenticated() && isDocumentOwner();
+      
+      // Suppression : seulement ses propres repas
+      allow delete: if isAuthenticated() && isDocumentOwner();
+    }
+    
+    // ========================================
+    // CHAT HISTORY (Historique conversations coach - OPTIONNEL)
+    // ========================================
+    
+    match /chatHistory/{chatId} {
+      // Lecture : seulement son propre historique
+      allow read: if isAuthenticated() && isDocumentOwner();
+      
+      // Création : seulement pour soi-même
+      allow create: if isAuthenticated()
+        && hasCorrectUserId();
+      
+      // Mise à jour : seulement son propre historique
+      allow update: if isAuthenticated() && isDocumentOwner();
+      
+      // Suppression : seulement son propre historique
+      allow delete: if isAuthenticated() && isDocumentOwner();
+    }
+    
+    // ========================================
+    // DEFAULT : DENY ALL
+    // ========================================
+    
+    // Tout ce qui n'est pas explicitement autorisé est refusé
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
