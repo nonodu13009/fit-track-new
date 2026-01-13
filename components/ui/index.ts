@@ -15,3 +15,4 @@ export {
   type ToastContainerProps,
   type ToastType,
 } from "./Toast";
+export { AlertDialog, type AlertDialogProps } from "./AlertDialog";

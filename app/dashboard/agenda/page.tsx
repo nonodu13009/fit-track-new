@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Badge, Loading, Button } from "@/components/ui";
+import { Card, Badge, Loading, Button, AlertDialog } from "@/components/ui";
+import { useAlertDialog } from "@/hooks/useAlertDialog";
 import { CreateEventModal } from "@/components/features/CreateEventModal";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { updateDocument, deleteDocument } from "@/lib/firebase/firestore";
@@ -27,6 +28,7 @@ import {
 export default function AgendaPage() {
   const { events, loading } = useCalendarEvents();
   const toast = useToastContext();
+  const { alertState, showAlert, closeAlert, confirmAlert } = useAlertDialog();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [currentWeekStart, setCurrentWeekStart] = useState(
@@ -53,16 +55,23 @@ export default function AgendaPage() {
     }
   };
 
-  const handleDelete = async (eventId: string) => {
-    if (!confirm("Supprimer cet événement ?")) return;
-
-    try {
-      await deleteDocument("calendarEvents", eventId);
-      toast.success("Événement supprimé");
-    } catch (error) {
-      console.error("Erreur:", error);
-      toast.error("Erreur lors de la suppression");
-    }
+  const handleDelete = (eventId: string) => {
+    showAlert(
+      "Êtes-vous sûr de vouloir supprimer cet événement ?",
+      async () => {
+        try {
+          await deleteDocument("calendarEvents", eventId);
+          toast.success("Événement supprimé");
+        } catch (error) {
+          console.error("Erreur:", error);
+          toast.error("Erreur lors de la suppression");
+        }
+      },
+      {
+        title: "Supprimer l'événement",
+        variant: "danger",
+      }
+    );
   };
 
   // Générer les 7 jours de la semaine
@@ -258,6 +267,18 @@ export default function AgendaPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         defaultDate={selectedDate}
+      />
+
+      {/* Alert Dialog */}
+      <AlertDialog
+        isOpen={alertState.isOpen}
+        onClose={closeAlert}
+        onConfirm={confirmAlert}
+        title={alertState.title}
+        message={alertState.message}
+        variant={alertState.variant}
+        confirmText="Supprimer"
+        cancelText="Annuler"
       />
     </div>
   );

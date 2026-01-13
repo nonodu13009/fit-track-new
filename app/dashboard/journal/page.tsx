@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Badge, Loading, Button } from "@/components/ui";
+import { Card, Badge, Loading, Button, AlertDialog } from "@/components/ui";
 import { EditWorkoutModal } from "@/components/features/EditWorkoutModal";
 import { useWorkouts } from "@/hooks/useWorkouts";
 import { deleteWorkout } from "@/lib/firebase/workouts";
 import { useToastContext } from "@/components/providers/ToastProvider";
+import { useAlertDialog } from "@/hooks/useAlertDialog";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Barbell, Clock, Fire, PencilSimple, Trash, Share } from "@phosphor-icons/react";
@@ -15,26 +16,32 @@ import { shareContent, formatWorkoutForShare } from "@/lib/utils/share";
 export default function JournalPage() {
   const { workouts, loading } = useWorkouts();
   const toast = useToastContext();
+  const { alertState, showAlert, closeAlert, confirmAlert } = useAlertDialog();
   const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filterSport, setFilterSport] = useState<string>("all");
   const [filterDate, setFilterDate] = useState<string>("all");
 
   const handleDelete = async (workoutId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cette séance ?")) {
-      return;
-    }
-
-    setDeletingId(workoutId);
-    try {
-      await deleteWorkout(workoutId);
-      toast.success("Séance supprimée");
-    } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
-      toast.error("Erreur lors de la suppression");
-    } finally {
-      setDeletingId(null);
-    }
+    showAlert(
+      "Êtes-vous sûr de vouloir supprimer cette séance ?",
+      async () => {
+        setDeletingId(workoutId);
+        try {
+          await deleteWorkout(workoutId);
+          toast.success("Séance supprimée");
+        } catch (error) {
+          console.error("Erreur lors de la suppression:", error);
+          toast.error("Erreur lors de la suppression");
+        } finally {
+          setDeletingId(null);
+        }
+      },
+      {
+        title: "Supprimer la séance",
+        variant: "danger",
+      }
+    );
   };
 
   const handleShare = async (workout: Workout) => {
@@ -255,6 +262,18 @@ export default function JournalPage() {
         isOpen={!!editingWorkout}
         onClose={() => setEditingWorkout(null)}
         workout={editingWorkout}
+      />
+
+      {/* Alert Dialog */}
+      <AlertDialog
+        isOpen={alertState.isOpen}
+        onClose={closeAlert}
+        onConfirm={confirmAlert}
+        title={alertState.title}
+        message={alertState.message}
+        variant={alertState.variant}
+        confirmText="Supprimer"
+        cancelText="Annuler"
       />
     </div>
   );

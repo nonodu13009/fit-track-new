@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Badge, Loading, Button } from "@/components/ui";
+import { Card, Badge, Loading, Button, AlertDialog } from "@/components/ui";
 import { CreateTemplateModal } from "@/components/features/CreateTemplateModal";
 import { CreateEventModal } from "@/components/features/CreateEventModal";
 import { useTemplates } from "@/hooks/useTemplates";
 import { deleteDocument } from "@/lib/firebase/firestore";
 import { useToastContext } from "@/components/providers/ToastProvider";
+import { useAlertDialog } from "@/hooks/useAlertDialog";
 import { Plus, Barbell, Clock, Trash, Play, Share } from "@phosphor-icons/react";
 import { shareContent, formatTemplateForShare } from "@/lib/utils/share";
 
 export default function TemplatesPage() {
   const { templates, loading } = useTemplates();
   const toast = useToastContext();
+  const { alertState, showAlert, closeAlert, confirmAlert } = useAlertDialog();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
@@ -33,20 +35,25 @@ export default function TemplatesPage() {
   };
 
   const handleDelete = async (templateId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce template ?")) {
-      return;
-    }
-
-    setDeletingId(templateId);
-    try {
-      await deleteDocument("workoutTemplates", templateId);
-      toast.success("Template supprimé");
-    } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
-      toast.error("Erreur lors de la suppression");
-    } finally {
-      setDeletingId(null);
-    }
+    showAlert(
+      "Êtes-vous sûr de vouloir supprimer ce template ?",
+      async () => {
+        setDeletingId(templateId);
+        try {
+          await deleteDocument("workoutTemplates", templateId);
+          toast.success("Template supprimé");
+        } catch (error) {
+          console.error("Erreur lors de la suppression:", error);
+          toast.error("Erreur lors de la suppression");
+        } finally {
+          setDeletingId(null);
+        }
+      },
+      {
+        title: "Supprimer le template",
+        variant: "danger",
+      }
+    );
   };
 
   if (loading) {
@@ -169,6 +176,18 @@ export default function TemplatesPage() {
           setIsPlanModalOpen(false);
           setSelectedTemplateId("");
         }}
+      />
+
+      {/* Alert Dialog */}
+      <AlertDialog
+        isOpen={alertState.isOpen}
+        onClose={closeAlert}
+        onConfirm={confirmAlert}
+        title={alertState.title}
+        message={alertState.message}
+        variant={alertState.variant}
+        confirmText="Supprimer"
+        cancelText="Annuler"
       />
     </div>
   );
