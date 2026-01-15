@@ -42,3 +42,7 @@ next-env.d.ts
 # IDE
 .vscode
 .idea
+# Fichiers temporaires et prototypes (ne pas commiter)
+app-canvas.html
+prototype_design.html
+cle.md
