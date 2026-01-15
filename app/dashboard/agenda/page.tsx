@@ -4,8 +4,13 @@ import { useState } from "react";
 import { Card, Badge, Loading, Button, AlertDialog } from "@/components/ui";
 import { useAlertDialog } from "@/hooks/useAlertDialog";
 import { CreateEventModal } from "@/components/features/CreateEventModal";
+import { EditWorkoutModal } from "@/components/features/EditWorkoutModal";
+import { EditWeightModal } from "@/components/features/EditWeightModal";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { useWorkouts } from "@/hooks/useWorkouts";
+import { useWeighIns } from "@/hooks/useWeighIns";
 import { updateDocument, deleteDocument } from "@/lib/firebase/firestore";
+import { type Workout, type WeighIn } from "@/types/workout";
 import { useToastContext } from "@/components/providers/ToastProvider";
 import {
   startOfWeek,
@@ -23,17 +28,45 @@ import {
   X,
   Trash,
   CalendarBlank,
+  CheckCircle,
+  Scale,
+  Pencil,
 } from "@phosphor-icons/react";
 
+// Type unifié pour afficher les événements, séances et poids
+type AgendaItem = {
+  id: string;
+  type: "event" | "workout" | "weight";
+  title: string;
+  sport?: string;
+  duration?: number;
+  date: Date;
+  isAllDay?: boolean;
+  status?: "planned" | "done" | "skipped";
+  rpe?: number;
+  notes?: string;
+  weight?: number; // Pour les weighIns
+  eventId?: string; // Pour les événements
+  workoutId?: string; // Pour les workouts
+  weighInId?: string; // Pour les weighIns
+  originalWeighIns?: WeighIn[]; // Tous les weighIns du jour (pour afficher si plusieurs)
+};
+
 export default function AgendaPage() {
-  const { events, loading } = useCalendarEvents();
+  const { events, loading: eventsLoading } = useCalendarEvents();
+  const { workouts, loading: workoutsLoading } = useWorkouts();
+  const { weighIns, loading: weighInsLoading } = useWeighIns();
   const toast = useToastContext();
   const { alertState, showAlert, closeAlert, confirmAlert } = useAlertDialog();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
+  const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
+  const [editingWeighIn, setEditingWeighIn] = useState<WeighIn | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
+
+  const loading = eventsLoading || workoutsLoading || weighInsLoading;
 
   const handleMarkDone = async (eventId: string) => {
     try {
@@ -45,15 +78,6 @@ export default function AgendaPage() {
     }
   };
 
-  const handleMarkSkipped = async (eventId: string) => {
-    try {
-      await updateDocument("calendarEvents", eventId, { status: "skipped" });
-      toast.success("Séance marquée comme sautée");
-    } catch (error) {
-      console.error("Erreur:", error);
-      toast.error("Erreur lors de la mise à jour");
-    }
-  };
 
   const handleDelete = (eventId: string) => {
     showAlert(
@@ -79,17 +103,93 @@ export default function AgendaPage() {
     addDays(currentWeekStart, i)
   );
 
-  // Filtrer les événements par jour
+  // Combiner les événements, séances et poids
+  const getAllAgendaItems = (): AgendaItem[] => {
+    const items: AgendaItem[] = [];
+
+    // Ajouter les événements planifiés
+    events.forEach((event) => {
+      items.push({
+        id: event.id,
+        type: "event",
+        title: event.title,
+        sport: event.sport,
+        duration: event.duration,
+        date: parseISO(event.start),
+        isAllDay: event.isAllDay,
+        status: event.status,
+        notes: event.notes,
+        eventId: event.id,
+      });
+    });
+
+    // Ajouter les séances enregistrées (workouts)
+    workouts.forEach((workout) => {
+      items.push({
+        id: workout.id,
+        type: "workout",
+        title: `Séance ${workout.sport}`,
+        sport: workout.sport,
+        duration: workout.duration,
+        date: parseISO(workout.date),
+        status: "done", // Les workouts sont toujours "fait"
+        rpe: workout.rpe,
+        notes: workout.notes,
+        workoutId: workout.id,
+      });
+    });
+
+    // Grouper les weighIns par jour et sélectionner le poids le plus bas
+    const weighInsByDay = new Map<string, WeighIn[]>();
+    weighIns.forEach((weighIn) => {
+      const dayKey = format(parseISO(weighIn.date), "yyyy-MM-dd");
+      if (!weighInsByDay.has(dayKey)) {
+        weighInsByDay.set(dayKey, []);
+      }
+      weighInsByDay.get(dayKey)!.push(weighIn);
+    });
+
+    // Pour chaque jour, créer un AgendaItem avec le poids le plus bas
+    weighInsByDay.forEach((dayWeighIns, dayKey) => {
+      // Trouver le poids le plus bas
+      const lowestWeighIn = dayWeighIns.reduce((lowest, current) =>
+        current.weight < lowest.weight ? current : lowest
+      );
+
+      items.push({
+        id: lowestWeighIn.id,
+        type: "weight",
+        title: `Poids : ${lowestWeighIn.weight.toFixed(1)} kg`,
+        date: parseISO(lowestWeighIn.date),
+        weight: lowestWeighIn.weight,
+        weighInId: lowestWeighIn.id,
+        originalWeighIns:
+          dayWeighIns.length > 1 ? dayWeighIns : undefined, // Garder tous si plusieurs
+      });
+    });
+
+    return items;
+  };
+
+  // Filtrer les items par jour
   const getEventsForDay = (date: Date) => {
-    return events.filter((event) =>
-      isSameDay(parseISO(event.start), date)
-    );
+    return getAllAgendaItems().filter((item) => isSameDay(item.date, date));
   };
 
   const statusColors = {
     planned: "border-accent-cyan bg-accent-cyan/10",
     done: "border-green-500 bg-green-500/10",
     skipped: "border-gray-600 bg-gray-800/50",
+  };
+
+  const getItemColor = (item: AgendaItem) => {
+    if (item.type === "workout") {
+      return "border-green-500 bg-green-500/10";
+    }
+    if (item.type === "weight") {
+      return "border-blue-500 bg-blue-500/10";
+    }
+    return statusColors[item.status || "planned"];
   };
 
   if (loading) {
@@ -165,51 +265,128 @@ export default function AgendaPage() {
                       + Ajouter
                     </button>
                   ) : (
-                    dayEvents.map((event) => (
+                    dayEvents.map((item) => (
                       <div
-                        key={event.id}
-                        className={`group relative rounded-lg border p-2 ${statusColors[event.status]}`}
+                        key={item.id}
+                        className={`group relative rounded-lg border p-2 ${getItemColor(item)}`}
                       >
-                        <p className="mb-1 text-xs font-semibold text-white">
-                          {event.title}
-                        </p>
-                        {event.sport && (
-                          <Badge variant="purple" size="sm" className="mb-1">
-                            {event.sport}
-                          </Badge>
-                        )}
-                        <p className="text-xs text-gray-400">
-                          {event.isAllDay
-                            ? "Toute la journée"
-                            : `${format(parseISO(event.start), "HH:mm")} - ${event.duration}min`}
-                        </p>
+                        <div className="flex items-start gap-2">
+                          {/* Icônes selon le type */}
+                          {item.type === "workout" && (
+                            <CheckCircle
+                              size={16}
+                              weight="fill"
+                              className="mt-0.5 flex-shrink-0 text-green-400"
+                            />
+                          )}
+                          {item.type === "weight" && (
+                            <Scale
+                              size={16}
+                              weight="fill"
+                              className="mt-0.5 flex-shrink-0 text-blue-400"
+                            />
+                          )}
+                          {item.type === "event" && item.status === "planned" && (
+                            <Calendar
+                              size={16}
+                              weight="fill"
+                              className="mt-0.5 flex-shrink-0 text-cyan-400"
+                            />
+                          )}
+                          {item.type === "event" && item.status === "done" && (
+                            <CheckCircle
+                              size={16}
+                              weight="fill"
+                              className="mt-0.5 flex-shrink-0 text-green-400"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="mb-1 text-xs font-semibold text-white">
+                              {item.title}
+                            </p>
+                            {item.sport && (
+                              <Badge variant="purple" size="sm" className="mb-1">
+                                {item.sport}
+                              </Badge>
+                            )}
+                            {item.originalWeighIns &&
+                              item.originalWeighIns.length > 1 && (
+                                <Badge variant="cyan" size="sm" className="mb-1">
+                                  {item.originalWeighIns.length} mesures
+                                </Badge>
+                              )}
+                            <p className="text-xs text-gray-400">
+                              {item.isAllDay
+                                ? "Toute la journée"
+                                : item.type === "workout"
+                                  ? `${item.duration}min${item.rpe ? ` • RPE ${item.rpe}` : ""}`
+                                  : item.type === "weight"
+                                    ? `Poids le plus bas du jour`
+                                    : `${format(item.date, "HH:mm")} - ${item.duration}min`}
+                            </p>
+                          </div>
+                        </div>
 
                         {/* Actions (visibles au hover) */}
-                        {event.status === "planned" && (
-                          <div className="mt-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <div className="mt-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          {/* Actions pour événements planifiés : Valider ou Supprimer */}
+                          {item.type === "event" &&
+                            item.status === "planned" &&
+                            item.eventId && (
+                              <>
+                                <button
+                                  onClick={() => handleMarkDone(item.eventId!)}
+                                  className="flex-1 rounded bg-green-500/20 p-1 text-xs text-green-400 hover:bg-green-500/30"
+                                  title="Valider"
+                                >
+                                  <Check size={14} weight="bold" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(item.eventId!)}
+                                  className="rounded bg-red-500/20 p-1 text-xs text-red-400 hover:bg-red-500/30"
+                                  title="Supprimer"
+                                >
+                                  <Trash size={14} weight="bold" />
+                                </button>
+                              </>
+                            )}
+
+                          {/* Actions pour workouts : Modifier */}
+                          {item.type === "workout" && item.workoutId && (
                             <button
-                              onClick={() => handleMarkDone(event.id)}
-                              className="flex-1 rounded bg-green-500/20 p-1 text-xs text-green-400 hover:bg-green-500/30"
-                              title="Marquer fait"
+                              onClick={() => {
+                                const workout = workouts.find(
+                                  (w) => w.id === item.workoutId
+                                );
+                                if (workout) {
+                                  setEditingWorkout(workout);
+                                }
+                              }}
+                              className="flex-1 rounded bg-blue-500/20 p-1 text-xs text-blue-400 hover:bg-blue-500/30"
+                              title="Modifier"
                             >
-                              <Check size={14} weight="bold" />
+                              <Pencil size={14} weight="bold" />
                             </button>
+                          )}
+
+                          {/* Actions pour poids : Modifier */}
+                          {item.type === "weight" && item.weighInId && (
                             <button
-                              onClick={() => handleMarkSkipped(event.id)}
-                              className="flex-1 rounded bg-gray-700/50 p-1 text-xs text-gray-400 hover:bg-gray-700"
-                              title="Marquer sauté"
+                              onClick={() => {
+                                const weighIn = weighIns.find(
+                                  (w) => w.id === item.weighInId
+                                );
+                                if (weighIn) {
+                                  setEditingWeighIn(weighIn);
+                                }
+                              }}
+                              className="flex-1 rounded bg-blue-500/20 p-1 text-xs text-blue-400 hover:bg-blue-500/30"
+                              title="Modifier"
                             >
-                              <X size={14} weight="bold" />
+                              <Pencil size={14} weight="bold" />
                             </button>
-                            <button
-                              onClick={() => handleDelete(event.id)}
-                              className="rounded bg-red-500/20 p-1 text-xs text-red-400 hover:bg-red-500/30"
-                              title="Supprimer"
-                            >
-                              <Trash size={14} weight="bold" />
-                            </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     ))
                   )}
@@ -221,52 +398,68 @@ export default function AgendaPage() {
       </Card>
 
       {/* Liste événements all-day */}
-      {events.filter((e) => e.isAllDay && e.status === "planned").length > 0 && (
+      {getAllAgendaItems().filter(
+        (item) => item.isAllDay && item.status === "planned"
+      ).length > 0 && (
         <Card variant="elevated">
           <h3 className="mb-3 text-lg font-semibold text-white">
             Événements sans heure précise
           </h3>
           <div className="space-y-2">
-            {events
-              .filter((e) => e.isAllDay && e.status === "planned")
-              .map((event) => (
+            {getAllAgendaItems()
+              .filter((item) => item.isAllDay && item.status === "planned")
+              .map((item) => (
                 <div
-                  key={event.id}
+                  key={item.id}
                   className="flex items-center justify-between rounded-lg bg-surface p-3"
                 >
                   <div>
-                    <p className="font-medium text-white">{event.title}</p>
+                    <p className="font-medium text-white">{item.title}</p>
                     <p className="text-sm text-gray-400">
-                      {format(parseISO(event.start), "dd MMMM yyyy", {
+                      {format(item.date, "dd MMMM yyyy", {
                         locale: fr,
                       })}
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleMarkDone(event.id)}
-                      className="rounded-lg p-2 text-green-400 hover:bg-green-500/10"
-                    >
-                      <Check size={18} weight="bold" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(event.id)}
-                      className="rounded-lg p-2 text-red-400 hover:bg-red-500/10"
-                    >
-                      <Trash size={18} weight="bold" />
-                    </button>
-                  </div>
+                  {item.type === "event" && item.eventId && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleMarkDone(item.eventId!)}
+                        className="rounded-lg p-2 text-green-400 hover:bg-green-500/10"
+                      >
+                        <Check size={18} weight="bold" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.eventId!)}
+                        className="rounded-lg p-2 text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash size={18} weight="bold" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
           </div>
         </Card>
       )}
 
-      {/* Modal Planification */}
+      {/* Modals */}
       <CreateEventModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         defaultDate={selectedDate}
+      />
+
+      <EditWorkoutModal
+        isOpen={editingWorkout !== null}
+        onClose={() => setEditingWorkout(null)}
+        workout={editingWorkout}
+      />
+
+      <EditWeightModal
+        isOpen={editingWeighIn !== null}
+        onClose={() => setEditingWeighIn(null)}
+        weighIn={editingWeighIn}
       />
 
       {/* Alert Dialog */}
