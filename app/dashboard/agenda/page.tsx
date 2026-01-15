@@ -29,7 +29,7 @@ import {
   Trash,
   CalendarBlank,
   CheckCircle,
-  Scale,
+  Scales,
   Pencil,
 } from "@phosphor-icons/react";
 
@@ -280,7 +280,7 @@ export default function AgendaPage() {
                             />
                           )}
                           {item.type === "weight" && (
-                            <Scale
+                            <Scales
                               size={16}
                               weight="fill"
                               className="mt-0.5 flex-shrink-0 text-blue-400"
