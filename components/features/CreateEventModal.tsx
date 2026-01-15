@@ -84,9 +84,9 @@ export function CreateEventModal({
         endDate = new Date(data.end).toISOString();
       }
 
-      await createDocument("calendarEvents", eventId, {
+      // Construire les données de l'événement
+      const eventData: Record<string, any> = {
         userId: user.uid,
-        workoutTemplateId: useTemplate ? selectedTemplateId : undefined,
         title: data.title,
         sport: data.sport || "",
         duration: data.duration || 60,
@@ -95,7 +95,14 @@ export function CreateEventModal({
         isAllDay,
         status: "planned",
         notes: data.notes || "",
-      });
+      };
+
+      // Ajouter workoutTemplateId seulement si un template est utilisé
+      if (useTemplate && selectedTemplateId) {
+        eventData.workoutTemplateId = selectedTemplateId;
+      }
+
+      await createDocument("calendarEvents", eventId, eventData);
 
       toast.success("Événement planifié !");
       form.reset();
