@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMistralClient, DEFAULT_MODEL } from "@/lib/mistral/client";
 import { COACH_SYSTEM_PROMPT } from "@/lib/mistral/prompts";
-import { queryDocuments, where, orderBy, limit } from "@/lib/firebase/firestore";
+import {
+  queryDocuments,
+  getDocument,
+  where,
+  orderBy,
+  limit,
+} from "@/lib/firebase/firestore";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,10 +34,7 @@ export async function POST(request: NextRequest) {
         ]);
 
         // Récupérer le profil utilisateur
-        const userProfile = await queryDocuments("userProfiles", [
-          where("__name__", "==", userId),
-          limit(1),
-        ]);
+        const userProfileDoc = await getDocument("userProfiles", userId);
 
         // Récupérer les dernières pesées
         const recentWeights = await queryDocuments("weighIns", [
@@ -41,11 +44,13 @@ export async function POST(request: NextRequest) {
         ]);
 
         // Construire le contexte
-        if (userProfile.length > 0) {
-          const profile = userProfile[0];
+        if (userProfileDoc) {
           contextText += `\n## Profil utilisateur :\n`;
-          contextText += `- Sports : ${profile.sports?.map((s: any) => s.name).join(", ")}\n`;
-          contextText += `- Objectif : ${profile.objective?.description || "Non défini"}\n`;
+          contextText += `- Sports : ${userProfileDoc.sports?.map((s: any) => s.name).join(", ") || "Non défini"}\n`;
+          contextText += `- Objectif : ${userProfileDoc.objective?.description || "Non défini"}\n`;
+          if (userProfileDoc.physical?.targetWeight) {
+            contextText += `- Poids cible : ${userProfileDoc.physical.targetWeight} kg\n`;
+          }
         }
 
         if (recentWorkouts.length > 0) {
@@ -106,10 +111,20 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Erreur API Coach:", error);
+    
+    // Message d'erreur plus spécifique selon le type d'erreur
+    let errorMessage = "Erreur lors de la communication avec le coach IA";
+    
+    if (error.message?.includes("MISTRAL_API_KEY")) {
+      errorMessage = "Configuration manquante : la clé API Mistral n'est pas configurée";
+    } else if (error.message) {
+      errorMessage = `Erreur : ${error.message}`;
+    }
+    
     return NextResponse.json(
       {
-        error: "Erreur lors de la communication avec le coach IA",
-        details: error.message,
+        error: errorMessage,
+        details: process.env.NODE_ENV === "development" ? error.message : undefined,
       },
       { status: 500 }
     );
