@@ -1,0 +1,26 @@
+name: 🚀 Auto-Deploy to Vercel
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - '.prettierignore'
+      - 'docs/**'
+
+jobs:
+  deploy:
+    name: Déployer sur Vercel
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Déclencher le déploiement Vercel
+        run: |
+          echo "🚀 Déclenchement du déploiement Vercel..."
+          curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}" || {
+            echo "❌ Erreur lors du déclenchement du déploiement"
+            exit 1
+          }
+          echo "✅ Déploiement déclenché avec succès !"
