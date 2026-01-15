@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -13,12 +13,13 @@ export const metadata: Metadata = {
   title: "JJB Tracking - Journal + Planner + Coach IA",
   description: "Application de tracking sportif, nutrition et coaching IA",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
   themeColor: "#a855f7",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-  },
 };
 
 export default function RootLayout({
