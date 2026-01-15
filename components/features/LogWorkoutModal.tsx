@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Modal, Button, Input } from "@/components/ui";
@@ -16,9 +16,14 @@ import { useToastContext } from "@/components/providers/ToastProvider";
 interface LogWorkoutModalProps {
   isOpen: boolean;
   onClose: () => void;
+  defaultDate?: string;
 }
 
-export function LogWorkoutModal({ isOpen, onClose }: LogWorkoutModalProps) {
+export function LogWorkoutModal({
+  isOpen,
+  onClose,
+  defaultDate,
+}: LogWorkoutModalProps) {
   const { user } = useAuth();
   const toast = useToastContext();
   const [isLoading, setIsLoading] = useState(false);
@@ -30,9 +35,16 @@ export function LogWorkoutModal({ isOpen, onClose }: LogWorkoutModalProps) {
       duration: undefined,
       rpe: 5,
       notes: "",
-      date: new Date().toISOString().split("T")[0],
+      date: defaultDate || new Date().toISOString().split("T")[0],
     },
   });
+
+  // Mettre à jour le formulaire quand defaultDate change
+  useEffect(() => {
+    if (defaultDate && isOpen) {
+      form.setValue("date", defaultDate);
+    }
+  }, [defaultDate, isOpen, form]);
 
   const onSubmit = async (data: LogWorkoutFormData) => {
     if (!user) return;

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, Badge, Loading, Button, AlertDialog } from "@/components/ui";
 import { useAlertDialog } from "@/hooks/useAlertDialog";
 import { CreateEventModal } from "@/components/features/CreateEventModal";
+import { LogWorkoutModal } from "@/components/features/LogWorkoutModal";
 import { EditWorkoutModal } from "@/components/features/EditWorkoutModal";
 import { EditWeightModal } from "@/components/features/EditWeightModal";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
@@ -14,11 +15,13 @@ import { type Workout, type WeighIn } from "@/types/workout";
 import { useToastContext } from "@/components/providers/ToastProvider";
 import {
   startOfWeek,
+  startOfDay,
   addDays,
   subDays,
   format,
   isSameDay,
   isToday,
+  isPast,
   parseISO,
 } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -61,7 +64,8 @@ export default function AgendaPage() {
   const { weighIns, loading: weighInsLoading } = useWeighIns();
   const toast = useToastContext();
   const { alertState, showAlert, closeAlert, confirmAlert } = useAlertDialog();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [isWorkoutModalOpen, setIsWorkoutModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
   const [editingWeighIn, setEditingWeighIn] = useState<WeighIn | null>(null);
@@ -211,7 +215,7 @@ export default function AgendaPage() {
           size="sm"
           onClick={() => {
             setSelectedDate("");
-            setIsModalOpen(true);
+            setIsEventModalOpen(true);
           }}
           icon={<Plus size={16} weight="bold" />}
         >
@@ -291,8 +295,17 @@ export default function AgendaPage() {
                   {dayEvents.length === 0 ? (
                     <button
                       onClick={() => {
-                        setSelectedDate(format(day, "yyyy-MM-dd"));
-                        setIsModalOpen(true);
+                        const dateStr = format(day, "yyyy-MM-dd");
+                        setSelectedDate(dateStr);
+                        // Si la date est dans le passé (hors aujourd'hui) : tracking (LogWorkoutModal)
+                        // Si la date est aujourd'hui ou dans le futur : planification (CreateEventModal)
+                        const dayStart = startOfDay(day);
+                        const todayStart = startOfDay(new Date());
+                        if (isPast(dayStart) && !isSameDay(dayStart, todayStart)) {
+                          setIsWorkoutModalOpen(true);
+                        } else {
+                          setIsEventModalOpen(true);
+                        }
                       }}
                       className="w-full rounded-lg border border-dashed border-white/10 p-2 text-xs text-gray-500 transition-colors hover:border-accent-cyan hover:text-accent-cyan"
                     >
@@ -479,8 +492,20 @@ export default function AgendaPage() {
 
       {/* Modals */}
       <CreateEventModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isEventModalOpen}
+        onClose={() => {
+          setIsEventModalOpen(false);
+          setSelectedDate("");
+        }}
+        defaultDate={selectedDate}
+      />
+
+      <LogWorkoutModal
+        isOpen={isWorkoutModalOpen}
+        onClose={() => {
+          setIsWorkoutModalOpen(false);
+          setSelectedDate("");
+        }}
         defaultDate={selectedDate}
       />
 

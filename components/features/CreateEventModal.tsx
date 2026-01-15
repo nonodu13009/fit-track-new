@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Modal, Button, Input } from "@/components/ui";
@@ -47,6 +47,14 @@ export function CreateEventModal({
       notes: "",
     },
   });
+
+  // Mettre à jour le formulaire quand defaultDate change
+  useEffect(() => {
+    if (defaultDate && isOpen) {
+      form.setValue("start", defaultDate);
+      form.setValue("end", defaultDate);
+    }
+  }, [defaultDate, isOpen, form]);
 
   const handleTemplateSelect = (templateId: string) => {
     const template = templates.find((t) => t.id === templateId);
