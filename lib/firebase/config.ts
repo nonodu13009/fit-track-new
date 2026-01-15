@@ -56,3 +56,32 @@ export const app = getFirebaseApp();
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+/**
+ * Fonction de diagnostic pour vérifier la configuration Firebase côté client
+ * Utile pour déboguer les problèmes de configuration en production
+ */
+export function checkFirebaseConfig(): {
+  isValid: boolean;
+  missing: string[];
+  config: Partial<typeof firebaseConfig>;
+} {
+  const config = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  };
+
+  const missing = Object.entries(config)
+    .filter(([_, value]) => !value)
+    .map(([key]) => key);
+
+  return {
+    isValid: missing.length === 0,
+    missing,
+    config: config as Partial<typeof firebaseConfig>,
+  };
+}

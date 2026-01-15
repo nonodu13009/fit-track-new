@@ -49,8 +49,11 @@ export default function AuthPage() {
     try {
       await signUp(data.email, data.password);
       window.location.href = "/onboarding";
-    } catch (err: any) {
-      setError(err.message || "Une erreur est survenue");
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(errorMessage);
+      console.error("Erreur lors de l'inscription:", err);
     } finally {
       setIsLoading(false);
     }
@@ -64,8 +67,11 @@ export default function AuthPage() {
     try {
       await signIn(data.email, data.password);
       window.location.href = "/dashboard";
-    } catch (err: any) {
-      setError(err.message || "Une erreur est survenue");
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(errorMessage);
+      console.error("Erreur lors de la connexion:", err);
     } finally {
       setIsLoading(false);
     }
@@ -79,8 +85,11 @@ export default function AuthPage() {
     try {
       await signInWithGoogle();
       window.location.href = "/dashboard";
-    } catch (err: any) {
-      setError(err.message || "Une erreur est survenue");
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(errorMessage);
+      console.error("Erreur lors de la connexion Google:", err);
     } finally {
       setIsLoading(false);
     }

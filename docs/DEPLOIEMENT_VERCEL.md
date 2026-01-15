@@ -99,9 +99,34 @@ Après le déploiement, vérifiez que :
 
 #### ❌ `Firebase: Error (auth/api-key-not-valid)`
 
-**Cause :** Les variables d'environnement Firebase ne sont pas configurées dans Vercel.
+**Causes possibles :**
 
-**Solution :** Suivez l'étape 2 ci-dessus pour ajouter toutes les variables Firebase dans Vercel.
+1. **Les variables d'environnement ne sont pas configurées dans Vercel**
+   - **Solution :** Suivez l'étape 2 ci-dessus pour ajouter toutes les variables Firebase dans Vercel.
+
+2. **Le déploiement a été fait avant d'ajouter les variables**
+   - **Solution :** Redéployez l'application après avoir ajouté les variables (voir étape 5).
+
+3. **Les valeurs des variables sont incorrectes dans Vercel**
+   - **Solution :** Vérifiez que chaque variable correspond exactement à celle dans Firebase Console :
+     - Allez sur [Firebase Console](https://console.firebase.google.com)
+     - Sélectionnez votre projet
+     - Allez dans **Project Settings** (⚙️) > **General**
+     - Faites défiler jusqu'à **Your apps** et sélectionnez votre app web
+     - Comparez chaque valeur avec celle dans Vercel (Settings > Environment Variables)
+     - **Attention :** Vérifiez qu'il n'y a pas d'espaces avant/après les valeurs dans Vercel
+
+4. **Les variables ne sont pas disponibles pour l'environnement de déploiement**
+   - **Solution :** Dans Vercel, pour chaque variable, cochez bien les environnements :
+     - ✅ **Production**
+     - ✅ **Preview**
+     - ✅ **Development** (si nécessaire)
+
+**Vérification rapide :**
+- Ouvrez la console du navigateur (F12)
+- Allez dans l'onglet "Console"
+- Tapez : `console.log(process.env.NEXT_PUBLIC_FIREBASE_API_KEY)`
+- Si cela affiche `undefined`, les variables ne sont pas injectées correctement
 
 #### ❌ `Failed to load resource: 404` pour les icônes
 
