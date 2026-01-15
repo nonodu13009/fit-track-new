@@ -404,10 +404,11 @@ export default function AgendaPage() {
                     </button>
                   ) : (
                     dayEvents.map((item) => {
-                      const isDraggable =
+                      const isDraggable = Boolean(
                         item.type === "event" &&
-                        item.status === "planned" &&
-                        item.eventId;
+                          item.status === "planned" &&
+                          item.eventId
+                      );
                       const isDragging = draggedItem?.id === item.id;
 
                       return (
