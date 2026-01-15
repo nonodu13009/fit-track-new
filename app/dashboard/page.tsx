@@ -6,10 +6,13 @@ import { WeightChart } from "@/components/features/WeightChart";
 import { VolumeChart } from "@/components/features/VolumeChart";
 import { StreakCard } from "@/components/features/StreakCard";
 import { useWeeklyStats } from "@/hooks/useWeeklyStats";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { motion } from "framer-motion";
 
 export default function DashboardPage() {
   const { workoutsCount, totalMinutes, avgRPE, loading } = useWeeklyStats();
+  const { profile } = useUserProfile();
+  const targetWeight = profile?.physical?.targetWeight;
 
   const getIntensityLabel = (rpe: number) => {
     if (rpe === 0) return "Aucune activité";
@@ -103,7 +106,7 @@ export default function DashboardPage() {
 
       {/* Graphiques */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <WeightChart />
+        <WeightChart targetWeight={targetWeight} />
         <VolumeChart />
       </div>
 
