@@ -73,6 +73,7 @@ export default function OnboardingStep3Page() {
 
       // Créer le profil utilisateur dans Firestore
       await createDocument("userProfiles", user.uid, {
+        userId: user.uid,
         email: user.email,
         sports,
         physical,

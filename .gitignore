@@ -46,3 +46,6 @@ next-env.d.ts
 app-canvas.html
 prototype_design.html
 cle.md
+
+# Configuration Firebase (contient des clés API sensibles)
+docs/FIREBASE_CONFIG_REFERENCE.md
