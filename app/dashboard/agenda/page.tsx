@@ -15,6 +15,7 @@ import { useToastContext } from "@/components/providers/ToastProvider";
 import {
   startOfWeek,
   addDays,
+  subDays,
   format,
   isSameDay,
   isToday,
@@ -31,6 +32,8 @@ import {
   CheckCircle,
   Scales,
   Pencil,
+  CaretLeft,
+  CaretRight,
 } from "@phosphor-icons/react";
 
 // Type unifié pour afficher les événements, séances et poids
@@ -218,10 +221,41 @@ export default function AgendaPage() {
 
       {/* Vue Semaine */}
       <Card variant="glass" className="p-4">
-        <div className="mb-4 text-center">
-          <h2 className="text-lg font-semibold text-white">
-            {format(currentWeekStart, "MMMM yyyy", { locale: fr })}
-          </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            onClick={() => setCurrentWeekStart(subDays(currentWeekStart, 7))}
+            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-surface hover:text-white"
+            aria-label="Semaine précédente"
+          >
+            <CaretLeft size={20} weight="bold" />
+          </button>
+          <div className="flex flex-col items-center gap-1">
+            <h2 className="text-lg font-semibold text-white">
+              {format(currentWeekStart, "MMMM yyyy", { locale: fr })}
+            </h2>
+            {!isSameDay(
+              currentWeekStart,
+              startOfWeek(new Date(), { weekStartsOn: 1 })
+            ) && (
+              <button
+                onClick={() =>
+                  setCurrentWeekStart(
+                    startOfWeek(new Date(), { weekStartsOn: 1 })
+                  )
+                }
+                className="text-xs text-accent-cyan hover:underline"
+              >
+                Aujourd'hui
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}
+            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-surface hover:text-white"
+            aria-label="Semaine suivante"
+          >
+            <CaretRight size={20} weight="bold" />
+          </button>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-7">
