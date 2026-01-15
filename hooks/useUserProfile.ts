@@ -27,27 +27,27 @@ export function useUserProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const loadProfile = async () => {
+    if (!user) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const profileData = await getDocument("userProfiles", user.uid);
+      setProfile(profileData as UserProfile | null);
+    } catch (error) {
+      console.error("Erreur chargement profil:", error);
+      setProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadProfile = async () => {
-      if (!user) {
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const profileData = await getDocument("userProfiles", user.uid);
-        setProfile(profileData as UserProfile | null);
-      } catch (error) {
-        console.error("Erreur chargement profil:", error);
-        setProfile(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadProfile();
   }, [user]);
 
-  return { profile, loading };
+  return { profile, loading, refresh: loadProfile };
 }

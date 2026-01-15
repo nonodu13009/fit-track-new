@@ -13,7 +13,8 @@ import { Scales, Plus, Target, Pencil } from "@phosphor-icons/react";
 
 export default function WeightPage() {
   const { weighIns, loading: weighInsLoading } = useWeighIns(50);
-  const { profile, loading: profileLoading } = useUserProfile();
+  const { profile, loading: profileLoading, refresh: refreshProfile } =
+    useUserProfile();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditTargetModalOpen, setIsEditTargetModalOpen] = useState(false);
 
@@ -225,8 +226,8 @@ export default function WeightPage() {
         onClose={() => setIsEditTargetModalOpen(false)}
         currentTargetWeight={targetWeight}
         onUpdate={() => {
-          // Le hook useUserProfile se mettra à jour automatiquement
-          // via le useEffect qui dépend de user
+          // Rafraîchir le profil pour mettre à jour l'objectif
+          refreshProfile();
         }}
       />
     </div>
