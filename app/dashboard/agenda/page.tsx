@@ -245,7 +245,7 @@ export default function AgendaPage() {
                 }
                 className="text-xs text-accent-cyan hover:underline"
               >
-                Aujourd'hui
+                Aujourd&apos;hui
               </button>
             )}
           </div>
