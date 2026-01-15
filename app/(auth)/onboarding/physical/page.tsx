@@ -21,6 +21,7 @@ export default function OnboardingStep2Page() {
       weight: undefined,
       height: undefined,
       dateOfBirth: "",
+      targetWeight: undefined,
     },
   });
 
@@ -70,7 +71,7 @@ export default function OnboardingStep2Page() {
               {/* Poids */}
               <div>
                 <Input
-                  label="Poids (kg)"
+                  label="Poids actuel (kg)"
                   type="number"
                   step="0.1"
                   placeholder="75"
@@ -79,6 +80,21 @@ export default function OnboardingStep2Page() {
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   Votre poids actuel sera le premier point de votre courbe
+                </p>
+              </div>
+
+              {/* Poids cible */}
+              <div>
+                <Input
+                  label="Poids cible (kg)"
+                  type="number"
+                  step="0.1"
+                  placeholder="70"
+                  error={form.formState.errors.targetWeight?.message}
+                  {...form.register("targetWeight", { valueAsNumber: true })}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Objectif de poids à atteindre (optionnel)
                 </p>
               </div>
 

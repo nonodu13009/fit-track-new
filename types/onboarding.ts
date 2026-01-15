@@ -12,6 +12,7 @@ export interface PhysicalData {
   weight: number; // en kg
   height: number; // en cm
   dateOfBirth: string; // format ISO
+  targetWeight?: number; // en kg - objectif de poids
 }
 
 export interface Objective {

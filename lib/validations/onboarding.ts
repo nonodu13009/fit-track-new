@@ -28,6 +28,11 @@ export const physicalSchema = z.object({
     .min(100, "La taille doit être supérieure à 100 cm")
     .max(250, "La taille doit être inférieure à 250 cm"),
   dateOfBirth: z.string().min(1, "La date de naissance est requise"),
+  targetWeight: z
+    .number()
+    .min(30, "Le poids cible doit être supérieur à 30 kg")
+    .max(200, "Le poids cible doit être inférieur à 200 kg")
+    .optional(),
 });
 
 /**

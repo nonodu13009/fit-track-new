@@ -9,13 +9,19 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
+  Legend,
 } from "recharts";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useWeighIns } from "@/hooks/useWeighIns";
 import { Card, Loading } from "@/components/ui";
 
-export function WeightChart() {
+interface WeightChartProps {
+  targetWeight?: number;
+}
+
+export function WeightChart({ targetWeight }: WeightChartProps) {
   const { weighIns, loading } = useWeighIns(30);
 
   const chartData = useMemo(() => {
@@ -100,7 +106,20 @@ export function WeightChart() {
           <YAxis
             stroke="#6B7280"
             style={{ fontSize: "12px" }}
-            domain={["dataMin - 2", "dataMax + 2"]}
+            domain={
+              targetWeight
+                ? [
+                    Math.min(
+                      ...chartData.map((d) => d.weight),
+                      targetWeight
+                    ) - 2,
+                    Math.max(
+                      ...chartData.map((d) => d.weight),
+                      targetWeight
+                    ) + 2,
+                  ]
+                : ["dataMin - 2", "dataMax + 2"]
+            }
           />
           <Tooltip
             contentStyle={{
@@ -116,6 +135,20 @@ export function WeightChart() {
               payload[0]?.payload?.fullDate || label
             }
           />
+          {targetWeight && (
+            <ReferenceLine
+              y={targetWeight}
+              stroke="#a855f7"
+              strokeDasharray="5 5"
+              strokeWidth={2}
+              label={{
+                value: `Objectif: ${targetWeight} kg`,
+                position: "right",
+                fill: "#a855f7",
+                fontSize: 12,
+              }}
+            />
+          )}
           <Line
             type="monotone"
             dataKey="weight"
@@ -123,7 +156,9 @@ export function WeightChart() {
             strokeWidth={2}
             dot={{ fill: "#22d3ee", r: 4 }}
             activeDot={{ r: 6 }}
+            name="Poids"
           />
+          {targetWeight && <Legend />}
         </LineChart>
       </ResponsiveContainer>
     </Card>
