@@ -100,14 +100,15 @@ export default function Home() {
             className="mt-12"
           >
             <div className="mb-2 text-sm font-semibold text-green-400">
-              ✅ MVP Complet à 65%
+              ✅ Production Ready • Toutes fonctionnalités actives
             </div>
-            <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
-              <span>Auth ✓</span>
-              <span>Journal ✓</span>
-              <span>Agenda ✓</span>
-              <span>Coach IA ✓</span>
-              <span>Nutrition ✓</span>
+            <div className="flex items-center justify-center gap-3 text-xs text-gray-500">
+              <span>🔐 Auth</span>
+              <span>📓 Journal</span>
+              <span>📅 Agenda</span>
+              <span>🤖 Coach IA</span>
+              <span>🍽️ Nutrition</span>
+              <span>🔥 Streaks</span>
             </div>
           </motion.div>
         </motion.div>
