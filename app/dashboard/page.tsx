@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, Loading } from "@/components/ui";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { WeightChart } from "@/components/features/WeightChart";
@@ -7,12 +8,24 @@ import { VolumeChart } from "@/components/features/VolumeChart";
 import { StreakCard } from "@/components/features/StreakCard";
 import { useWeeklyStats } from "@/hooks/useWeeklyStats";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { isToday, parseISO, format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { motion } from "framer-motion";
 
 export default function DashboardPage() {
   const { workoutsCount, totalMinutes, avgRPE, loading } = useWeeklyStats();
   const { profile } = useUserProfile();
+  const { events, loading: eventsLoading } = useCalendarEvents();
   const targetWeight = profile?.physical?.targetWeight;
+
+  // Filtrer les événements d'aujourd'hui avec status "planned"
+  const todayEvents = useMemo(() => {
+    return events.filter((event) => {
+      const eventDate = parseISO(event.start);
+      return isToday(eventDate) && event.status === "planned";
+    });
+  }, [events]);
 
   const getIntensityLabel = (rpe: number) => {
     if (rpe === 0) return "Aucune activité";
@@ -115,15 +128,41 @@ export default function DashboardPage() {
         <h2 className="mb-4 text-lg font-semibold text-white">
           À faire aujourd&apos;hui
         </h2>
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 rounded-lg bg-surface p-3">
-            <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-accent-purple" />
-            <div>
-              <p className="text-sm font-medium text-white">Entraînement JJB</p>
-              <p className="text-xs text-gray-500">18:00 - 90 min</p>
-            </div>
+        {eventsLoading ? (
+          <div className="py-4">
+            <Loading size="sm" color="purple" />
           </div>
-        </div>
+        ) : todayEvents.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-sm text-gray-400">
+              Aucun événement planifié pour aujourd&apos;hui
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {todayEvents.map((event) => {
+              const eventDate = parseISO(event.start);
+              const timeStr = event.isAllDay
+                ? "Toute la journée"
+                : `${format(eventDate, "HH:mm", { locale: fr })} - ${event.duration || 60} min`;
+
+              return (
+                <div
+                  key={event.id}
+                  className="flex items-center gap-3 rounded-lg bg-surface p-3"
+                >
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-accent-purple" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white">
+                      {event.title}
+                    </p>
+                    <p className="text-xs text-gray-500">{timeStr}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
     </div>
   );
