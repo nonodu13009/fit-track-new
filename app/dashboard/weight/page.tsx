@@ -4,16 +4,18 @@ import { useState, useMemo } from "react";
 import { Card, Badge, Loading, Button } from "@/components/ui";
 import { WeightChart } from "@/components/features/WeightChart";
 import { LogWeightModal } from "@/components/features/LogWeightModal";
+import { EditTargetWeightModal } from "@/components/features/EditTargetWeightModal";
 import { useWeighIns } from "@/hooks/useWeighIns";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Scales, Plus, Target } from "@phosphor-icons/react";
+import { Scales, Plus, Target, Pencil } from "@phosphor-icons/react";
 
 export default function WeightPage() {
   const { weighIns, loading: weighInsLoading } = useWeighIns(50);
   const { profile, loading: profileLoading } = useUserProfile();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditTargetModalOpen, setIsEditTargetModalOpen] = useState(false);
 
   const targetWeight = profile?.physical?.targetWeight;
   const currentWeight = weighIns.length > 0 ? weighIns[weighIns.length - 1].weight : null;
@@ -67,42 +69,56 @@ export default function WeightPage() {
       </div>
 
       {/* Objectif de poids */}
-      {targetWeight && (
-        <Card variant="elevated">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-accent-purple/20 p-3">
-              <Target size={24} weight="fill" className="text-accent-purple" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-gray-400">Objectif</h3>
-              <p className="text-xl font-bold text-white">
-                {targetWeight.toFixed(1)} kg
+      <Card variant="elevated">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-accent-purple/20 p-3">
+            <Target size={24} weight="fill" className="text-accent-purple" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-medium text-gray-400">Objectif</h3>
+            {targetWeight ? (
+              <>
+                <p className="text-xl font-bold text-white">
+                  {targetWeight.toFixed(1)} kg
+                </p>
+                {progression && (
+                  <p
+                    className={`text-sm ${
+                      progression.type === "achieved"
+                        ? "text-green-400"
+                        : progression.type === "above"
+                          ? "text-orange-400"
+                          : "text-cyan-400"
+                    }`}
+                  >
+                    {progression.message}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Aucun objectif défini
               </p>
-              {progression && (
-                <p
-                  className={`text-sm ${
-                    progression.type === "achieved"
-                      ? "text-green-400"
-                      : progression.type === "above"
-                        ? "text-orange-400"
-                        : "text-cyan-400"
-                  }`}
-                >
-                  {progression.message}
-                </p>
-              )}
-            </div>
-            {currentWeight && (
-              <div className="text-right">
-                <p className="text-sm text-gray-400">Actuel</p>
-                <p className="text-lg font-semibold text-white">
-                  {currentWeight.toFixed(1)} kg
-                </p>
-              </div>
             )}
           </div>
-        </Card>
-      )}
+          {currentWeight && (
+            <div className="text-right">
+              <p className="text-sm text-gray-400">Actuel</p>
+              <p className="text-lg font-semibold text-white">
+                {currentWeight.toFixed(1)} kg
+              </p>
+            </div>
+          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setIsEditTargetModalOpen(true)}
+            icon={<Pencil size={16} weight="bold" />}
+          >
+            {targetWeight ? "Modifier" : "Définir"}
+          </Button>
+        </div>
+      </Card>
 
       {/* Graphique */}
       <WeightChart targetWeight={targetWeight} />
@@ -198,10 +214,20 @@ export default function WeightPage() {
         )}
       </Card>
 
-      {/* Modal */}
+      {/* Modals */}
       <LogWeightModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      <EditTargetWeightModal
+        isOpen={isEditTargetModalOpen}
+        onClose={() => setIsEditTargetModalOpen(false)}
+        currentTargetWeight={targetWeight}
+        onUpdate={() => {
+          // Le hook useUserProfile se mettra à jour automatiquement
+          // via le useEffect qui dépend de user
+        }}
       />
     </div>
   );

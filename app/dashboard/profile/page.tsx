@@ -20,6 +20,7 @@ interface ProfileData {
     weight: number;
     height: number;
     dateOfBirth: string;
+    targetWeight?: number;
   };
   objective: {
     type: string;
@@ -42,6 +43,7 @@ export default function ProfilePage() {
       weight: 0,
       height: 0,
       dateOfBirth: "",
+      targetWeight: undefined as number | undefined,
       objectiveDescription: "",
     },
   });
@@ -60,6 +62,7 @@ export default function ProfilePage() {
             weight: profile.physical?.weight,
             height: profile.physical?.height,
             dateOfBirth: profile.physical?.dateOfBirth,
+            targetWeight: profile.physical?.targetWeight,
             objectiveDescription: profile.objective?.description,
           });
         }
@@ -103,6 +106,7 @@ export default function ProfilePage() {
           weight: Number(data.weight),
           height: Number(data.height),
           dateOfBirth: data.dateOfBirth,
+          targetWeight: data.targetWeight ? Number(data.targetWeight) : undefined,
         },
         objective: {
           ...profileData?.objective,
@@ -216,9 +220,9 @@ export default function ProfilePage() {
             Données physiques
           </h2>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Input
-              label="Poids (kg)"
+              label="Poids actuel (kg)"
               type="number"
               step="0.1"
               placeholder="75"
@@ -237,7 +241,19 @@ export default function ProfilePage() {
               type="date"
               {...form.register("dateOfBirth")}
             />
+
+            <Input
+              label="Poids cible (kg)"
+              type="number"
+              step="0.1"
+              placeholder="70"
+              {...form.register("targetWeight", { valueAsNumber: true })}
+            />
           </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Le poids cible vous permet de suivre votre progression vers votre
+            objectif
+          </p>
         </Card>
 
         {/* Objectif */}
