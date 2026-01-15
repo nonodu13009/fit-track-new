@@ -72,6 +72,8 @@ export default function AgendaPage() {
   const [currentWeekStart, setCurrentWeekStart] = useState(
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
+  const [draggedItem, setDraggedItem] = useState<AgendaItem | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<Date | null>(null);
 
   const loading = eventsLoading || workoutsLoading || weighInsLoading;
 
@@ -103,6 +105,90 @@ export default function AgendaPage() {
         variant: "danger",
       }
     );
+  };
+
+  // Gérer le drag and drop
+  const handleDragStart = (e: React.DragEvent, item: AgendaItem) => {
+    // Ne permettre le drag que pour les événements planifiés
+    if (item.type === "event" && item.status === "planned" && item.eventId) {
+      setDraggedItem(item);
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", ""); // Nécessaire pour Firefox
+    } else {
+      e.preventDefault();
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, day: Date) => {
+    if (draggedItem && draggedItem.type === "event" && draggedItem.status === "planned") {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setDragOverDay(day);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverDay(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetDay: Date) => {
+    e.preventDefault();
+    setDragOverDay(null);
+
+    if (!draggedItem || draggedItem.type !== "event" || !draggedItem.eventId) {
+      return;
+    }
+
+    // Trouver l'événement original
+    const event = events.find((ev) => ev.id === draggedItem.eventId);
+    if (!event) return;
+
+    // Calculer la nouvelle date
+    const oldDate = parseISO(event.start);
+    const newDate = startOfDay(targetDay);
+
+    // Si l'événement a une heure, préserver l'heure
+    let newStart: string;
+    let newEnd: string;
+
+    if (event.isAllDay) {
+      // Pour les événements all-day, juste changer la date
+      newStart = newDate.toISOString();
+      newEnd = newDate.toISOString();
+    } else {
+      // Préserver l'heure mais changer la date
+      const oldDateTime = new Date(oldDate);
+      newDate.setHours(oldDateTime.getHours());
+      newDate.setMinutes(oldDateTime.getMinutes());
+      newDate.setSeconds(0);
+      newDate.setMilliseconds(0);
+
+      newStart = newDate.toISOString();
+
+      // Calculer la nouvelle date de fin en préservant la durée
+      const duration = event.duration || 60;
+      const endDate = new Date(newDate);
+      endDate.setMinutes(endDate.getMinutes() + duration);
+      newEnd = endDate.toISOString();
+    }
+
+    try {
+      await updateDocument("calendarEvents", draggedItem.eventId, {
+        start: newStart,
+        end: newEnd,
+      });
+      toast.success("Séance déplacée");
+      setDraggedItem(null);
+    } catch (error) {
+      console.error("Erreur lors du déplacement:", error);
+      toast.error("Erreur lors du déplacement");
+      setDraggedItem(null);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverDay(null);
   };
 
   // Générer les 7 jours de la semaine
@@ -273,8 +359,13 @@ export default function AgendaPage() {
                 className={`rounded-lg border p-3 transition-colors ${
                   isCurrentDay
                     ? "border-accent-purple bg-accent-purple/5"
-                    : "border-white/10 bg-surface/50"
+                    : dragOverDay && isSameDay(dragOverDay, day)
+                      ? "border-accent-cyan bg-accent-cyan/10"
+                      : "border-white/10 bg-surface/50"
                 }`}
+                onDragOver={(e) => handleDragOver(e, day)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, day)}
               >
                 {/* Header jour */}
                 <div className="mb-2 text-center">
@@ -312,11 +403,25 @@ export default function AgendaPage() {
                       + Ajouter
                     </button>
                   ) : (
-                    dayEvents.map((item) => (
-                      <div
-                        key={item.id}
-                        className={`group relative rounded-lg border p-2 ${getItemColor(item)}`}
-                      >
+                    dayEvents.map((item) => {
+                      const isDraggable =
+                        item.type === "event" &&
+                        item.status === "planned" &&
+                        item.eventId;
+                      const isDragging = draggedItem?.id === item.id;
+
+                      return (
+                        <div
+                          key={item.id}
+                          className={`group relative rounded-lg border p-2 transition-opacity ${
+                            getItemColor(item)
+                          } ${isDragging ? "opacity-50" : ""} ${
+                            isDraggable ? "cursor-move" : ""
+                          }`}
+                          draggable={isDraggable}
+                          onDragStart={(e) => handleDragStart(e, item)}
+                          onDragEnd={handleDragEnd}
+                        >
                         <div className="flex items-start gap-2">
                           {/* Icônes selon le type */}
                           {item.type === "workout" && (
@@ -435,7 +540,8 @@ export default function AgendaPage() {
                           )}
                         </div>
                       </div>
-                    ))
+                    );
+                  })
                   )}
                 </div>
               </div>
