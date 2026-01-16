@@ -109,13 +109,18 @@ export async function POST(request: NextRequest) {
         // Vérifier si c'est la première itération et si on doit utiliser les tools
         const useTools = iteration === 0 ? COACH_TOOLS : undefined;
         
-        const response = await mistral.chat.complete({
+        const requestOptions: any = {
           model: DEFAULT_MODEL,
           messages,
-          ...(useTools ? { tools: useTools } : {}),
           temperature: 0.7,
           maxTokens: 1000,
-        });
+        };
+        
+        if (useTools) {
+          requestOptions.tools = useTools;
+        }
+        
+        const response = await mistral.chat.complete(requestOptions);
 
         const choice = response.choices?.[0];
         if (!choice) {
@@ -219,8 +224,12 @@ export async function POST(request: NextRequest) {
         break;
       } catch (iterationError: any) {
         console.error(`Erreur lors de l'itération ${iteration}:`, iterationError);
-        // Si c'est la première itération, essayer sans tools
-        if (iteration === 0) {
+        console.error("Stack trace:", iterationError.stack);
+        console.error("Message d'erreur:", iterationError.message);
+        
+        // Si c'est la première itération et que l'erreur est liée aux tools, essayer sans tools
+        if (iteration === 0 && (iterationError.message?.includes("tool") || iterationError.message?.includes("function"))) {
+          console.log("Tentative sans tools en fallback...");
           try {
             const fallbackResponse = await mistral.chat.complete({
               model: DEFAULT_MODEL,
@@ -241,7 +250,13 @@ export async function POST(request: NextRequest) {
             finalResponse =
               typeof fallbackContent === "string"
                 ? fallbackContent
-                : "Désolé, je n'ai pas pu générer de réponse.";
+                : Array.isArray(fallbackContent)
+                  ? fallbackContent
+                      .map((chunk: any) =>
+                        typeof chunk === "string" ? chunk : chunk.text || ""
+                      )
+                      .join("")
+                  : "Désolé, je n'ai pas pu générer de réponse.";
             break;
           } catch (fallbackError: any) {
             console.error("Erreur fallback:", fallbackError);
