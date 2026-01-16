@@ -210,15 +210,25 @@ export async function POST(request: NextRequest) {
         console.log(`[Coach API] ${toolCalls.length} tool call(s) détecté(s)`);
         
         // Normaliser les tool calls avec type="function" requis
+        // ⚠️ CRITIQUE : Générer un ID si manquant AVANT de normaliser
         const normalizedToolCalls = toolCalls.map((tc: any) => {
-          if (!tc.id) {
-            console.error(`[Coach API] ⚠️ Tool call sans ID:`, tc);
+          let toolCallId = tc.id;
+          
+          // Si pas d'ID, générer un ID de fallback (cas exceptionnel)
+          if (!toolCallId) {
+            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            toolCallId = "";
+            for (let i = 0; i < 12; i++) {
+              toolCallId += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            console.error(`[Coach API] ⚠️ Tool call sans ID, génération ID fallback: ${toolCallId}`);
           }
+          
           return {
-            id: tc.id,
+            id: toolCallId,
             type: "function",
             function: {
-              name: tc.function?.name,
+              name: tc.function?.name || "unknown",
               arguments: tc.function?.arguments || "{}",
             },
           };
@@ -234,55 +244,60 @@ export async function POST(request: NextRequest) {
         console.log(`[Coach API] Message assistant avec tool_calls ajouté:`, JSON.stringify(normalizedToolCalls, null, 2));
 
         // Exécuter chaque tool et ajouter réponse (dans l'ordre)
+        // ⚠️ CRITIQUE : Utiliser normalizedToolCalls pour garantir correspondance des IDs
         // ⚠️ CRITIQUE : Chaque tool call DOIT recevoir une réponse (même si invalide)
-        for (const toolCall of toolCalls) {
-          let toolCallId = toolCall.id;
+        for (let i = 0; i < normalizedToolCalls.length; i++) {
+          const normalizedCall = normalizedToolCalls[i];
+          const originalCall = toolCalls[i];
           
-          // Si pas d'ID, générer un ID de fallback (cas exceptionnel)
-          if (!toolCallId) {
-            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            toolCallId = "";
-            for (let i = 0; i < 12; i++) {
-              toolCallId += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            console.error(`[Coach API] ⚠️ Tool call sans ID, génération ID fallback: ${toolCallId}`);
-          }
+          const toolCallId = normalizedCall.id;
+          const toolName = normalizedCall.function.name;
           
           let toolResult: any;
           
           // Si pas de nom de fonction, retourner erreur
-          if (!toolCall.function?.name) {
-            console.error(`[Coach API] ⚠️ Tool call sans nom de fonction`);
+          if (!toolName || toolName === "unknown") {
+            console.error(`[Coach API] ⚠️ Tool call sans nom de fonction valide`);
             toolResult = {
               success: false,
               error: "Tool call invalide : nom de fonction manquant",
             };
           } else {
-            // Exécuter le tool normalement
-            toolResult = await executeTool(toolCall, userId);
+            // Exécuter le tool avec le call original (pour les arguments)
+            toolResult = await executeTool(originalCall, userId);
           }
           
           const toolResponse = {
             role: "tool",
-            tool_call_id: toolCallId,
-            name: toolCall.function?.name || "unknown",
+            tool_call_id: toolCallId, // ID du normalized call (garantit correspondance)
+            name: toolName,
             content: JSON.stringify(toolResult),
           };
           
           messages.push(toolResponse);
           console.log(`[Coach API] Tool response ajoutée:`, {
             tool_call_id: toolCallId,
-            name: toolCall.function?.name || "unknown",
+            name: toolName,
             success: toolResult.success !== false,
           });
         }
         
         console.log(`[Coach API] Total messages avant 2ème appel: ${messages.length}`);
-        console.log(`[Coach API] Messages:`, JSON.stringify(messages.map((m: any) => ({
-          role: m.role,
-          hasToolCalls: !!m.tool_calls,
-          tool_call_id: m.tool_call_id,
-        })), null, 2));
+        console.log(`[Coach API] Vérification correspondance IDs:`);
+        const assistantMsg = messages.find((m: any) => m.role === "assistant" && m.tool_calls);
+        const toolMsgs = messages.filter((m: any) => m.role === "tool");
+        if (assistantMsg && assistantMsg.tool_calls) {
+          console.log(`[Coach API] Tool calls IDs:`, assistantMsg.tool_calls.map((tc: any) => tc.id));
+          console.log(`[Coach API] Tool response IDs:`, toolMsgs.map((tm: any) => tm.tool_call_id));
+          const allMatch = assistantMsg.tool_calls.every((tc: any, idx: number) => {
+            const toolMsg = toolMsgs[idx];
+            return toolMsg && tc.id === toolMsg.tool_call_id;
+          });
+          console.log(`[Coach API] ✅ Tous les IDs correspondent: ${allMatch}`);
+          if (!allMatch) {
+            console.error(`[Coach API] ❌ MISMATCH DÉTECTÉ !`);
+          }
+        }
 
         // DEUXIÈME APPEL : avec tool responses
         const finalResponse = await retryWithBackoff(
