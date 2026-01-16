@@ -184,7 +184,8 @@ export async function POST(request: NextRequest) {
     const ENABLE_TOOL_CALLING = true;
 
     try {
-        // PREMIER APPEL : avec tools disponibles
+      // PREMIER APPEL : avec tools disponibles
+      console.log(`[Coach API] Premier appel Mistral avec ${messages.length} message(s) initial(aux)`);
       const firstResponse = await retryWithBackoff(
         () => mistral.chat.complete({
           model: DEFAULT_MODEL,
