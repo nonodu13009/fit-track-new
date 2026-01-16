@@ -279,8 +279,11 @@ export async function POST(request: NextRequest) {
             const toolName = toolCall.function?.name || "unknown";
             
             // ⚠️ CRITIQUE : Préserver l'ID original de Mistral tel quel
+            // Mistral utilise 'id' dans tool_calls et 'tool_call_id' dans tool responses
             // Ne pas le modifier/tronquer car Mistral doit pouvoir faire la correspondance
-            let toolCallId = toolCall.id || toolCall.tool_call_id;
+            // Dans tool_calls, c'est toujours 'id', pas 'tool_call_id'
+            const toolCallIdFromCall = toolCall.id; // C'est le champ utilisé dans tool_calls
+            let toolCallId = toolCallIdFromCall || toolCall.tool_call_id; // Fallback si format inattendu
             const originalId = toolCallId;
             
             // Logger l'ID original pour debugging
@@ -428,22 +431,41 @@ export async function POST(request: NextRequest) {
               `[Coach API] ⚠️ MISMATCH CRITIQUE: ${toolCalls.length} tool call(s) reçu(s) mais ${toolResponsesCount} réponse(s) envoyée(s)`
             );
             console.error(
-              `[Coach API] Détails des tool calls:`,
+              `[Coach API] Détails des tool calls reçus:`,
               toolCalls.map((tc: any, idx: number) => ({
                 index: idx,
-                id: tc.id || tc.tool_call_id || "MISSING",
+                id: tc.id || "MISSING",
+                tool_call_id: tc.tool_call_id || "N/A",
                 name: tc.function?.name || "unknown",
+                fullToolCall: JSON.stringify(tc),
               }))
             );
+            const lastToolMessages = messages
+              .filter((m: any) => m.role === "tool")
+              .slice(-toolResponsesCount);
             console.error(
               `[Coach API] Dernières réponses envoyées:`,
-              messages
-                .filter((m: any) => m.role === "tool")
-                .slice(-toolResponsesCount)
-                .map((m: any) => ({
-                  tool_call_id: m.tool_call_id,
-                  name: m.name,
-                }))
+              lastToolMessages.map((m: any, idx: number) => ({
+                index: idx,
+                tool_call_id: m.tool_call_id,
+                name: m.name,
+                fullResponse: JSON.stringify(m),
+              }))
+            );
+            // Comparer les IDs pour trouver le mismatch
+            const receivedIds = toolCalls.map((tc: any) => tc.id || tc.tool_call_id || "MISSING");
+            const sentIds = lastToolMessages.map((m: any) => m.tool_call_id || "MISSING");
+            console.error(
+              `[Coach API] Comparaison IDs:`,
+              {
+                received: receivedIds,
+                sent: sentIds,
+                match: receivedIds.map((id, idx) => ({
+                  received: id,
+                  sent: sentIds[idx],
+                  matches: id === sentIds[idx],
+                })),
+              }
             );
           } else {
             console.log(
@@ -451,10 +473,31 @@ export async function POST(request: NextRequest) {
             );
             // Logger le format exact des messages qui seront envoyés à Mistral
             const toolMessages = messages.filter((m: any) => m.role === "tool").slice(-toolResponsesCount);
+            const assistantMessage = messages.find((m: any) => m.role === "assistant" && m.tool_calls);
             console.log(
-              `[Coach API] Format exact des tool responses qui seront envoyées:`,
+              `[Coach API] Format exact assistant message avec tool_calls:`,
+              JSON.stringify(assistantMessage, null, 2)
+            );
+            console.log(
+              `[Coach API] Format exact des tool responses:`,
               JSON.stringify(toolMessages, null, 2)
             );
+            // Vérifier la correspondance des IDs
+            const receivedIds = toolCalls.map((tc: any) => tc.id || "MISSING");
+            const sentIds = toolMessages.map((m: any) => m.tool_call_id || "MISSING");
+            const allMatch = receivedIds.every((id, idx) => id === sentIds[idx]);
+            if (!allMatch) {
+              console.error(
+                `[Coach API] ⚠️ IDs ne correspondent pas exactement:`,
+                {
+                  received: receivedIds,
+                  sent: sentIds,
+                  matches: receivedIds.map((id, idx) => id === sentIds[idx]),
+                }
+              );
+            } else {
+              console.log(`[Coach API] ✅ Tous les IDs correspondent exactement`);
+            }
           }
 
           iteration++;
