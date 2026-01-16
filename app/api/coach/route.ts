@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
 
     // Appel Mistral avec tool calling
     const mistral = getMistralClient();
-    const messages: any[] = [
+    let messages: any[] = [
       {
         role: "system",
         content: COACH_SYSTEM_PROMPT + (contextText ? `\n\n${contextText}` : ""),
