@@ -234,24 +234,45 @@ export async function POST(request: NextRequest) {
         console.log(`[Coach API] Message assistant avec tool_calls ajouté:`, JSON.stringify(normalizedToolCalls, null, 2));
 
         // Exécuter chaque tool et ajouter réponse (dans l'ordre)
+        // ⚠️ CRITIQUE : Chaque tool call DOIT recevoir une réponse (même si invalide)
         for (const toolCall of toolCalls) {
-          if (!toolCall.id) {
-            console.error(`[Coach API] ⚠️ Tool call sans ID, impossible de créer la réponse`);
-            continue;
+          let toolCallId = toolCall.id;
+          
+          // Si pas d'ID, générer un ID de fallback (cas exceptionnel)
+          if (!toolCallId) {
+            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            toolCallId = "";
+            for (let i = 0; i < 12; i++) {
+              toolCallId += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            console.error(`[Coach API] ⚠️ Tool call sans ID, génération ID fallback: ${toolCallId}`);
           }
           
-          const toolResult = await executeTool(toolCall, userId);
+          let toolResult: any;
+          
+          // Si pas de nom de fonction, retourner erreur
+          if (!toolCall.function?.name) {
+            console.error(`[Coach API] ⚠️ Tool call sans nom de fonction`);
+            toolResult = {
+              success: false,
+              error: "Tool call invalide : nom de fonction manquant",
+            };
+          } else {
+            // Exécuter le tool normalement
+            toolResult = await executeTool(toolCall, userId);
+          }
+          
           const toolResponse = {
             role: "tool",
-            tool_call_id: toolCall.id,
-            name: toolCall.function?.name,
+            tool_call_id: toolCallId,
+            name: toolCall.function?.name || "unknown",
             content: JSON.stringify(toolResult),
           };
           
           messages.push(toolResponse);
           console.log(`[Coach API] Tool response ajoutée:`, {
-            tool_call_id: toolCall.id,
-            name: toolCall.function?.name,
+            tool_call_id: toolCallId,
+            name: toolCall.function?.name || "unknown",
             success: toolResult.success !== false,
           });
         }
