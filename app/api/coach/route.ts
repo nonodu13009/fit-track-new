@@ -104,9 +104,8 @@ export async function POST(request: NextRequest) {
     let maxIterations = 5; // Limiter les itérations pour éviter les boucles infinies
     let iteration = 0;
 
-    // Désactiver temporairement les tool calls pour debug
-    // TODO: Réactiver une fois que le coach de base fonctionne
-    const ENABLE_TOOL_CALLING = false;
+    // Tool calling activé : permet au coach de mettre à jour l'agenda
+    const ENABLE_TOOL_CALLING = true;
     
     while (iteration < maxIterations) {
       try {
