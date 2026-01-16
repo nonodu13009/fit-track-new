@@ -49,3 +49,7 @@ cle.md
 
 # Configuration Firebase (contient des clés API sensibles)
 docs/FIREBASE_CONFIG_REFERENCE.md
+
+# Fichiers de credentials Firebase Admin SDK (NE JAMAIS COMMITER)
+*firebase-adminsdk*.json
+*-firebase-adminsdk*.json
