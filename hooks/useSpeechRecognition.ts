@@ -33,8 +33,8 @@ export function useSpeechRecognition({
 
     if (SpeechRecognition) {
       setIsSupported(true);
-      recognitionRef.current = new SpeechRecognition();
-      const recognition = recognitionRef.current;
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
 
       recognition.continuous = continuous;
       recognition.interimResults = interimResults;
@@ -112,7 +112,8 @@ export function useSpeechRecognition({
   }, [language, continuous, interimResults, onResult, onError]);
 
   const startListening = useCallback(() => {
-    if (!recognitionRef.current) {
+    const recognition = recognitionRef.current;
+    if (!recognition) {
       setError("Reconnaissance vocale non disponible");
       return;
     }
@@ -120,7 +121,7 @@ export function useSpeechRecognition({
     try {
       setTranscript("");
       setError(null);
-      recognitionRef.current.start();
+      recognition.start();
     } catch (err: any) {
       const errorMsg =
         err.message || "Impossible de démarrer la reconnaissance vocale";
@@ -132,8 +133,9 @@ export function useSpeechRecognition({
   }, [onError]);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
+    const recognition = recognitionRef.current;
+    if (recognition && isListening) {
+      recognition.stop();
     }
   }, [isListening]);
 
