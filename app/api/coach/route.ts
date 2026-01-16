@@ -184,12 +184,17 @@ export async function POST(request: NextRequest) {
               }
 
               // Ajouter le résultat du tool (utiliser tool_call_id avec underscore)
-              messages.push({
+              // Le SDK Mistral attend tool_call_id (avec underscore)
+              const toolMessage: any = {
                 role: "tool",
                 content: JSON.stringify(toolResult),
-                name: toolName,
                 tool_call_id: toolCallId,
-              });
+              };
+              // Ajouter name seulement si présent (optionnel selon SDK)
+              if (toolName && toolName !== "unknown") {
+                toolMessage.name = toolName;
+              }
+              messages.push(toolMessage);
             } catch (toolError: any) {
               console.error(`Erreur lors de l'exécution du tool ${toolName}:`, toolError);
               // Ajouter un message d'erreur pour le tool
