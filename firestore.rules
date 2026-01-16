@@ -52,8 +52,12 @@ service cloud.firestore {
     // ========================================
     
     match /workouts/{workoutId} {
-      // Lecture : seulement ses propres séances
-      allow read: if isAuthenticated() && isDocumentOwner();
+      // Lecture d'un document spécifique : seulement ses propres séances
+      allow get: if isAuthenticated() && isDocumentOwner();
+      
+      // Requêtes de collection : seulement ses propres séances
+      // Note: Les requêtes doivent filtrer par userId == request.auth.uid
+      allow list: if isAuthenticated() && request.auth.uid != null;
       
       // Création : seulement pour soi-même
       allow create: if isAuthenticated()
@@ -72,8 +76,12 @@ service cloud.firestore {
     // ========================================
     
     match /weighIns/{weighInId} {
-      // Lecture : seulement ses propres pesées
-      allow read: if isAuthenticated() && isDocumentOwner();
+      // Lecture d'un document spécifique : seulement ses propres pesées
+      allow get: if isAuthenticated() && isDocumentOwner();
+      
+      // Requêtes de collection : seulement ses propres pesées
+      // Note: Les requêtes doivent filtrer par userId == request.auth.uid
+      allow list: if isAuthenticated() && request.auth.uid != null;
       
       // Création : seulement pour soi-même
       allow create: if isAuthenticated()
@@ -135,8 +143,12 @@ service cloud.firestore {
     // ========================================
     
     match /calendarEvents/{eventId} {
-      // Lecture : seulement ses propres événements
-      allow read: if isAuthenticated() && isDocumentOwner();
+      // Lecture d'un document spécifique : seulement ses propres événements
+      allow get: if isAuthenticated() && isDocumentOwner();
+      
+      // Requêtes de collection : seulement ses propres événements
+      // Note: Les requêtes doivent filtrer par userId == request.auth.uid
+      allow list: if isAuthenticated() && request.auth.uid != null;
       
       // Création : seulement pour soi-même
       allow create: if isAuthenticated()
