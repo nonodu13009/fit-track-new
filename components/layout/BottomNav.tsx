@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { House, Notebook, Calendar, ChatCircle, User } from "@phosphor-icons/react";
+import { House, Notebook, Calendar, ChatCircle, User, Trophy } from "@phosphor-icons/react";
 
 const NAV_ITEMS = [
   {
@@ -22,9 +22,9 @@ const NAV_ITEMS = [
     icon: Calendar,
   },
   {
-    label: "Coach",
-    href: "/dashboard/coach",
-    icon: ChatCircle,
+    label: "Progression",
+    href: "/dashboard/progression",
+    icon: Trophy,
   },
   {
     label: "Profil",
@@ -46,7 +46,7 @@ export function BottomNav() {
       >
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
 
           return (
             <Link key={item.href} href={item.href}>

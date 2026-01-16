@@ -37,7 +37,7 @@ export function StepCard({ step, onClick }: StepCardProps) {
     : 0;
 
   return (
-    <Link href={`/progression/${step.id}`} onClick={onClick}>
+    <Link href={`/dashboard/progression/${step.id}`} onClick={onClick}>
       <Card
         variant="elevated"
         hoverable

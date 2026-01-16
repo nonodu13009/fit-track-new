@@ -66,7 +66,7 @@ export default function StepDetailPage() {
         <Card variant="elevated">
           <div className="text-center py-8">
             <p className="text-lg text-gray-400 mb-4">Étape introuvable</p>
-            <Button variant="primary" onClick={() => router.push("/progression")}>
+            <Button variant="primary" onClick={() => router.push("/dashboard/progression")}>
               Retour à la progression
             </Button>
           </div>
@@ -115,7 +115,7 @@ export default function StepDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/progression")}
+            onClick={() => router.push("/dashboard/progression")}
           >
             ← Retour
           </Button>
