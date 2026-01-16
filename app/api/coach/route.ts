@@ -239,14 +239,31 @@ export async function POST(request: NextRequest) {
             );
           });
 
-          // Ajouter le message de l'assistant avec tool calls
+          // Normaliser les tool calls pour s'assurer qu'ils ont le format correct
+          // ⚠️ CRITIQUE : Mistral exige "type": "function" pour chaque tool call
+          const normalizedToolCalls = toolCalls.map((tc: any) => ({
+            id: tc.id || tc.tool_call_id, // Préserver l'ID original
+            type: "function", // ⚠️ REQUIS selon support Mistral
+            function: {
+              name: tc.function?.name || tc.name,
+              arguments: tc.function?.arguments || tc.arguments || "{}",
+            },
+          }));
+
+          // Ajouter le message de l'assistant avec tool calls normalisés
           // ⚠️ IMPORTANT : Mistral exige que si tool_calls est présent, content doit être null
           const assistantMessageWithTools: any = {
             role: "assistant",
-            tool_calls: toolCalls,
+            tool_calls: normalizedToolCalls,
             content: null, // Toujours null quand tool_calls est présent (selon docs Mistral)
           };
           messages.push(assistantMessageWithTools);
+          
+          // Logger le format normalisé pour vérification
+          console.log(
+            `[Coach API] Tool calls normalisés avec type="function":`,
+            JSON.stringify(normalizedToolCalls, null, 2)
+          );
 
           // Validation stricte : vérifier que tous les tool calls ont un ID
           const toolCallsWithoutId = toolCalls.filter(
