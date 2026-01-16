@@ -59,15 +59,13 @@ export default function CoachPage() {
 
   // Mettre à jour le champ de texte avec la transcription en temps réel
   useEffect(() => {
-    if (transcript && isListening) {
-      // Pour les résultats intermédiaires, on garde le texte existant et on ajoute la transcription
-      // Le hook gère déjà la mise à jour via onResult pour les résultats finaux
-      // Ici on gère seulement l'affichage en temps réel
-      setInputValue((prev) => {
-        // Si on a déjà du texte, on le garde et on ajoute la transcription
-        // Sinon on utilise juste la transcription
-        return prev ? `${prev} ${transcript}` : transcript;
-      });
+    if (transcript) {
+      if (isListening) {
+        // Pendant l'enregistrement : remplacer le texte par la transcription actuelle
+        // Cela évite les accumulations de répétitions
+        setInputValue(transcript);
+      }
+      // Note: onResult est appelé pour les résultats finaux et met déjà à jour le champ
     }
   }, [transcript, isListening]);
 

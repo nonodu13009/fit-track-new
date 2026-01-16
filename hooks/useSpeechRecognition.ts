@@ -43,24 +43,34 @@ export function useSpeechRecognition({
       recognition.onstart = () => {
         setIsListening(true);
         setError(null);
+        previousFinalTranscriptRef.current = ""; // Réinitialiser au début
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         let interimTranscript = "";
         let finalTranscript = "";
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        // Construire le transcript complet depuis le début
+        // Les résultats finaux s'accumulent, les intermédiaires se remplacent
+        for (let i = 0; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
+            // Résultats finaux : on les accumule
             finalTranscript += transcript + " ";
+            previousFinalTranscriptRef.current += transcript + " ";
           } else {
-            interimTranscript += transcript;
+            // Résultat intermédiaire : on remplace (pas d'accumulation)
+            interimTranscript = transcript;
           }
         }
 
-        const fullTranscript = finalTranscript || interimTranscript;
-        setTranscript(fullTranscript.trim());
+        // Combiner : résultats finaux accumulés + dernier résultat intermédiaire
+        const fullTranscript = (
+          previousFinalTranscriptRef.current + interimTranscript
+        ).trim();
+        setTranscript(fullTranscript);
 
+        // Appeler onResult seulement quand on a de nouveaux résultats finaux
         if (finalTranscript && onResult) {
           onResult(finalTranscript.trim());
         }
