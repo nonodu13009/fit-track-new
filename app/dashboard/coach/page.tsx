@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, Button, Loading, Badge } from "@/components/ui";
 import { useCoach } from "@/hooks/useCoach";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useToastContext } from "@/components/providers/ToastProvider";
 import { shareContent } from "@/lib/utils/share";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,6 +16,8 @@ import {
   Copy,
   Share,
   CheckCircle,
+  Microphone,
+  MicrophoneSlash,
 } from "@phosphor-icons/react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -26,6 +29,47 @@ export default function CoachPage() {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Reconnaissance vocale
+  const {
+    isListening,
+    transcript,
+    isSupported,
+    error: speechError,
+    startListening,
+    stopListening,
+    toggleListening,
+  } = useSpeechRecognition({
+    onResult: (finalTranscript) => {
+      // Quand la transcription finale est disponible, l'ajouter au champ
+      setInputValue((prev) => {
+        const newValue = prev ? `${prev} ${finalTranscript}` : finalTranscript;
+        return newValue;
+      });
+      // Arrêter l'enregistrement après résultat final
+      stopListening();
+    },
+    onError: (errorMsg) => {
+      toast.error(errorMsg);
+    },
+    language: "fr-FR",
+    continuous: false,
+    interimResults: true,
+  });
+
+  // Mettre à jour le champ de texte avec la transcription en temps réel
+  useEffect(() => {
+    if (transcript && isListening) {
+      // Pour les résultats intermédiaires, on garde le texte existant et on ajoute la transcription
+      // Le hook gère déjà la mise à jour via onResult pour les résultats finaux
+      // Ici on gère seulement l'affichage en temps réel
+      setInputValue((prev) => {
+        // Si on a déjà du texte, on le garde et on ajoute la transcription
+        // Sinon on utilise juste la transcription
+        return prev ? `${prev} ${transcript}` : transcript;
+      });
+    }
+  }, [transcript, isListening]);
 
   // Auto-scroll vers le bas
   useEffect(() => {
@@ -299,26 +343,52 @@ export default function CoachPage() {
 
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
-          <textarea
-            ref={textareaRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Posez votre question... (Entrée pour envoyer, Shift+Entrée pour nouvelle ligne)"
-            disabled={isLoading}
-            rows={1}
-            className="flex-1 resize-none rounded-lg border border-white/10 bg-surface px-4 py-3 text-white placeholder:text-gray-600 transition-all focus:border-accent-purple focus:outline-none focus:ring-2 focus:ring-accent-purple/50 disabled:opacity-50"
-            style={{
-              minHeight: "48px",
-              maxHeight: "200px",
-              height: "auto",
-            }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = "auto";
-              target.style.height = `${Math.min(target.scrollHeight, 200)}px`;
-            }}
-          />
+          <div className="relative flex flex-1 items-end gap-2">
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Posez votre question... (Entrée pour envoyer, Shift+Entrée pour nouvelle ligne)"
+              disabled={isLoading}
+              rows={1}
+              className="flex-1 resize-none rounded-lg border border-white/10 bg-surface px-4 py-3 pr-12 text-white placeholder:text-gray-600 transition-all focus:border-accent-purple focus:outline-none focus:ring-2 focus:ring-accent-purple/50 disabled:opacity-50"
+              style={{
+                minHeight: "48px",
+                maxHeight: "200px",
+                height: "auto",
+              }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = "auto";
+                target.style.height = `${Math.min(target.scrollHeight, 200)}px`;
+              }}
+            />
+            {/* Bouton microphone */}
+            {isSupported && (
+              <button
+                type="button"
+                onClick={toggleListening}
+                disabled={isLoading}
+                className={`absolute right-2 bottom-2 flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
+                  isListening
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "bg-elevated text-gray-400 hover:bg-elevated/80 hover:text-accent-cyan"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                title={
+                  isListening
+                    ? "Arrêter l'enregistrement"
+                    : "Démarrer l'enregistrement vocal"
+                }
+              >
+                {isListening ? (
+                  <MicrophoneSlash size={18} weight="fill" />
+                ) : (
+                  <Microphone size={18} weight="fill" />
+                )}
+              </button>
+            )}
+          </div>
           <Button
             type="submit"
             disabled={!inputValue.trim() || isLoading}
@@ -332,7 +402,12 @@ export default function CoachPage() {
         {/* Hint */}
         <p className="mt-2 text-xs text-gray-500">
           💡 <strong>Entrée</strong> pour envoyer • <strong>Shift + Entrée</strong> pour nouvelle ligne
+          {isSupported && " • 🎤 Cliquez sur le micro pour parler"}
         </p>
+        {/* Erreur reconnaissance vocale */}
+        {speechError && (
+          <p className="mt-1 text-xs text-red-400">{speechError}</p>
+        )}
       </Card>
     </div>
   );
