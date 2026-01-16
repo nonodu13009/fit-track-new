@@ -1,74 +1,82 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { StepWithProgress } from "@/lib/progression/types";
-import { StepCard } from "./StepCard";
-import { scrollToStep } from "@/lib/progression/scroll";
+import { motion } from "motion/react";
+import { PasWithProgress, UserProgress } from "@/lib/progression/types";
+import { SwipeCard } from "./SwipeCard";
+import { getTargetPasIdForScroll } from "@/lib/progression/compute";
+import { getPasByCycle } from "@/lib/progression/pas";
 
 interface TimelineProps {
-  steps: StepWithProgress[];
-  targetStepId?: string | null;
-  onStepClick?: (stepId: string) => void;
+  progress: UserProgress;
+  pasWithProgress: PasWithProgress[];
+  onSwipeShort?: (pasId: string) => void;
+  onSwipeLong?: (pasId: string) => void;
 }
 
-export function Timeline({ steps, targetStepId, onStepClick }: TimelineProps) {
+export function Timeline({
+  progress,
+  pasWithProgress,
+  onSwipeShort,
+  onSwipeLong,
+}: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const targetRef = useRef<HTMLDivElement>(null);
+  const targetPasId = getTargetPasIdForScroll(progress);
 
   useEffect(() => {
-    if (targetStepId && targetRef.current) {
-      // Petit délai pour s'assurer que le DOM est prêt
-      setTimeout(() => {
-        targetRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-          inline: "center",
-        });
-      }, 100);
+    if (targetPasId && containerRef.current) {
+      const element = document.getElementById(`pas-${targetPasId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     }
-  }, [targetStepId]);
+  }, [targetPasId]);
+
+  // Grouper par cycle
+  const pasByCycle: Record<number, PasWithProgress[]> = {};
+  for (const pas of pasWithProgress) {
+    if (!pasByCycle[pas.cycle]) {
+      pasByCycle[pas.cycle] = [];
+    }
+    pasByCycle[pas.cycle].push(pas);
+  }
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full overflow-x-auto overflow-y-hidden md:overflow-x-auto md:overflow-y-hidden"
-      style={{
-        scrollSnapType: "x mandatory",
-      }}
-    >
-      {/* Mobile: Vertical layout */}
-      <div className="flex flex-col gap-4 md:hidden">
-        {steps.map((step) => (
-          <div
-            key={step.id}
-            id={`step-node-${step.id}`}
-            ref={step.id === targetStepId ? targetRef : null}
-            className="scroll-snap-align-start"
-          >
-            <StepCard
-              step={step}
-              onClick={() => onStepClick?.(step.id)}
-            />
-          </div>
-        ))}
-      </div>
+    <div ref={containerRef} className="space-y-8">
+      {[1, 2, 3, 4].map((cycle) => {
+        const cyclePas = pasByCycle[cycle] || [];
+        if (cyclePas.length === 0) return null;
 
-      {/* Desktop: Horizontal layout */}
-      <div className="hidden md:flex md:flex-row md:gap-4 md:pb-4">
-        {steps.map((step) => (
-          <div
-            key={step.id}
-            id={`step-node-${step.id}`}
-            ref={step.id === targetStepId ? targetRef : null}
-            className="scroll-snap-align-start flex-shrink-0 w-80"
-          >
-            <StepCard
-              step={step}
-              onClick={() => onStepClick?.(step.id)}
-            />
+        return (
+          <div key={cycle} id={`cycle-${cycle}`} className="space-y-4">
+            <h2 className="text-xl font-bold text-white mb-4">
+              Cycle {cycle} - {cycle === 1 ? "Fondations" : cycle === 2 ? "Intermédiaire" : cycle === 3 ? "Avancé" : "Expérimenté"}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {cyclePas.map((pas) => (
+                <motion.div
+                  key={pas.id}
+                  id={`pas-${pas.id}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={
+                    pas.id === targetPasId
+                      ? "ring-2 ring-accent-purple rounded-lg p-1"
+                      : ""
+                  }
+                >
+                  <SwipeCard
+                    pas={pas}
+                    onSwipeShort={onSwipeShort}
+                    onSwipeLong={onSwipeLong}
+                  />
+                </motion.div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }

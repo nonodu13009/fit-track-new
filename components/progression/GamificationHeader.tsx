@@ -49,6 +49,14 @@ export function GamificationHeader({ gamification }: GamificationHeaderProps) {
           </div>
         </div>
 
+        {/* Tokens */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-400">Tokens:</span>
+          <Badge variant="lime" size="sm">
+            🪙 {gamification.tokens || 0}
+          </Badge>
+        </div>
+
         {/* Streak et badges */}
         <div className="flex items-center gap-4 pt-2 border-t border-white/10">
           {gamification.streak > 0 && (
@@ -57,6 +65,11 @@ export function GamificationHeader({ gamification }: GamificationHeaderProps) {
               <Badge variant="lime" size="sm">
                 🔥 {gamification.streak} jours
               </Badge>
+              {gamification.streakFreeze > 0 && (
+                <Badge variant="gray" size="sm">
+                  ❄️ {gamification.streakFreeze}
+                </Badge>
+              )}
             </div>
           )}
           <div className="flex items-center gap-2">

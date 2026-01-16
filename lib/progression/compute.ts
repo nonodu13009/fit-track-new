@@ -1,268 +1,325 @@
 /**
  * Logique de calcul pour status, completion, et progression
+ * Système Gracie Barra avec paliers K-E-A-I et cycles
  */
 
-import { Step, StepStatus, StepProgress, UserProgress, StepWithProgress, BlockProgress } from "./types";
-import { STEPS, getStepById } from "./steps";
+import {
+  Pas,
+  PasStatus,
+  PasProgress,
+  UserProgress,
+  PasWithProgress,
+  CycleProgress,
+  MasteryTier,
+} from "./types";
+import { PAS, getPasById, getPasByCycle } from "./pas";
+import { calculateMasteryTier, canValidatePas } from "./validation";
 
 /**
- * Vérifie si une step est verrouillée (prérequis non remplis)
+ * Vérifie si un pas est verrouillé (prérequis non remplis)
  */
-function isStepLocked(step: Step, progress: UserProgress): boolean {
-  if (!step.prerequisites || step.prerequisites.length === 0) {
+function isPasLocked(pas: Pas, progress: UserProgress): boolean {
+  if (!pas.prerequisites || pas.prerequisites.length === 0) {
     return false;
   }
 
-  return step.prerequisites.some((prereqId) => {
-    const prereqProgress = progress.steps[prereqId];
+  return pas.prerequisites.some((prereqId) => {
+    const prereqProgress = progress.pas[prereqId];
     return !prereqProgress || !prereqProgress.validatedAt;
   });
 }
 
 /**
- * Vérifie si tous les items REQUIRED de la checklist sont cochés
+ * Calcule le status d'un pas
  */
-function areRequiredChecklistItemsChecked(step: Step, stepProgress: StepProgress): boolean {
-  const requiredItems = step.checklist.filter((item) => item.type === "REQUIRED");
-  
-  if (requiredItems.length === 0) {
-    return true;
-  }
+export function computePasStatus(pas: Pas, progress: UserProgress): PasStatus {
+  const pasProgress = progress.pas[pas.id];
 
-  return requiredItems.every((item) => stepProgress.checklistState[item.id] === true);
-}
-
-/**
- * Vérifie si tous les KPIs REQUIRED ont atteint leur target
- */
-function areRequiredKPIsReached(step: Step, stepProgress: StepProgress): boolean {
-  const requiredKPIs = step.kpis.filter((kpi) => kpi.type === "REQUIRED");
-  
-  if (requiredKPIs.length === 0) {
-    return true;
-  }
-
-  return requiredKPIs.every((kpi) => {
-    const current = stepProgress.kpisState[kpi.id] || 0;
-    return current >= kpi.target;
-  });
-}
-
-/**
- * Vérifie si une step peut être validée (DONE)
- */
-function canStepBeValidated(step: Step, stepProgress: StepProgress): boolean {
-  return (
-    areRequiredChecklistItemsChecked(step, stepProgress) &&
-    areRequiredKPIsReached(step, stepProgress)
-  );
-}
-
-/**
- * Calcule le status d'une step
- */
-export function computeStepStatus(
-  step: Step,
-  progress: UserProgress
-): StepStatus {
-  const stepProgress = progress.steps[step.id];
-
-  // Si verrouillée par prérequis
-  if (isStepLocked(step, progress)) {
+  // Si verrouillé par prérequis
+  if (isPasLocked(pas, progress)) {
     return "LOCKED";
   }
 
   // Si pas de progression, disponible
-  if (!stepProgress) {
+  if (!pasProgress) {
     return "AVAILABLE";
   }
 
-  // Si validée
-  if (stepProgress.validatedAt) {
+  // Si validé
+  if (pasProgress.validatedAt) {
     return "DONE";
   }
 
-  // Si en cours (au moins un item modifié)
-  return "IN_PROGRESS";
+  // Si en cours (au moins un palier commencé)
+  const hasProgress =
+    pasProgress.paliersState.K.status !== "not_started" ||
+    pasProgress.paliersState.E.status !== "not_started" ||
+    pasProgress.paliersState.A.status !== "not_started" ||
+    pasProgress.paliersState.I.status !== "not_started";
+
+  return hasProgress ? "IN_PROGRESS" : "AVAILABLE";
 }
 
 /**
- * Calcule le pourcentage de completion d'une step
+ * Calcule le pourcentage de completion d'un pas
  */
-export function computeStepCompletion(
-  step: Step,
-  stepProgress?: StepProgress
+export function computePasCompletion(
+  pas: Pas,
+  pasProgress?: PasProgress
 ): number {
-  if (!stepProgress) {
+  if (!pasProgress) {
     return 0;
   }
 
-  const totalItems = step.checklist.length + step.kpis.length;
-  if (totalItems === 0) {
-    return stepProgress.validatedAt ? 100 : 0;
-  }
+  // Compter les paliers complétés
+  const paliersCompleted =
+    (pasProgress.paliersState.K.status === "completed" ? 1 : 0) +
+    (pasProgress.paliersState.E.status === "completed" ? 1 : 0) +
+    (pasProgress.paliersState.A.status === "completed" ? 1 : 0) +
+    (pasProgress.paliersState.I.status === "completed" ? 1 : 0);
 
-  let completed = 0;
-
-  // Checklist items cochés
-  step.checklist.forEach((item) => {
-    if (stepProgress.checklistState[item.id]) {
-      completed++;
-    }
-  });
-
-  // KPIs atteints
-  step.kpis.forEach((kpi) => {
-    const current = stepProgress.kpisState[kpi.id] || 0;
-    if (current >= kpi.target) {
-      completed++;
-    }
-  });
-
-  return Math.round((completed / totalItems) * 100);
+  return Math.round((paliersCompleted / 4) * 100);
 }
 
 /**
- * Trouve la step actuellement en cours (IN_PROGRESS)
- */
-export function getCurrentStepId(progress: UserProgress): string | null {
-  for (const step of STEPS) {
-    const status = computeStepStatus(step, progress);
-    if (status === "IN_PROGRESS") {
-      return step.id;
-    }
-  }
-  return null;
-}
-
-/**
- * Trouve la step la plus récemment mise à jour
- */
-export function getLastUpdatedStepId(progress: UserProgress): string | null {
-  let lastUpdated: { stepId: string; updatedAt: string } | null = null;
-
-  for (const [stepId, stepProgress] of Object.entries(progress.steps)) {
-    if (!lastUpdated || stepProgress.updatedAt > lastUpdated.updatedAt) {
-      lastUpdated = {
-        stepId,
-        updatedAt: stepProgress.updatedAt,
-      };
-    }
-  }
-
-  return lastUpdated?.stepId || null;
-}
-
-/**
- * Trouve la step cible pour auto-scroll
- * Priorité : lastUpdated > current > first AVAILABLE
- */
-export function getTargetStepIdForScroll(progress: UserProgress): string | null {
-  // 1. Dernière mise à jour
-  const lastUpdated = getLastUpdatedStepId(progress);
-  if (lastUpdated) {
-    return lastUpdated;
-  }
-
-  // 2. Step en cours
-  const current = getCurrentStepId(progress);
-  if (current) {
-    return current;
-  }
-
-  // 3. Première step disponible
-  for (const step of STEPS) {
-    const status = computeStepStatus(step, progress);
-    if (status === "AVAILABLE") {
-      return step.id;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Calcule le pourcentage de completion global
+ * Calcule la completion globale (tous les pas)
  */
 export function computeGlobalCompletion(progress: UserProgress): number {
-  if (STEPS.length === 0) {
+  if (PAS.length === 0) {
     return 0;
   }
 
-  let completed = 0;
-  for (const step of STEPS) {
-    const status = computeStepStatus(step, progress);
-    if (status === "DONE") {
-      completed++;
-    }
+  let totalCompletion = 0;
+  for (const pas of PAS) {
+    const pasProgress = progress.pas[pas.id];
+    totalCompletion += computePasCompletion(pas, pasProgress);
   }
 
-  return Math.round((completed / STEPS.length) * 100);
+  return Math.round(totalCompletion / PAS.length);
 }
 
 /**
- * Calcule le pourcentage de completion par bloc
+ * Calcule la progression d'un cycle
  */
-export function computeBlockProgress(progress: UserProgress): BlockProgress[] {
-  const blocks: BlockProgress[] = [];
+export function computeCycleProgress(
+  cycle: number,
+  progress: UserProgress
+): CycleProgress {
+  const cyclePas = getPasByCycle(cycle);
+  const totalPas = cyclePas.length;
 
-  for (let blockNum = 1; blockNum <= 4; blockNum++) {
-    const blockSteps = STEPS.filter((step) => step.block === blockNum);
-    const totalSteps = blockSteps.length;
+  let completedPas = 0;
+  let bronzeCount = 0;
+  let argentCount = 0;
+  let orCount = 0;
 
-    let completedSteps = 0;
-    for (const step of blockSteps) {
-      const status = computeStepStatus(step, progress);
-      if (status === "DONE") {
-        completedSteps++;
+  for (const pas of cyclePas) {
+    const pasProgress = progress.pas[pas.id];
+    if (pasProgress?.validatedAt) {
+      completedPas++;
+    }
+
+    // Compter les mastery tiers
+    if (pasProgress?.masteryTier) {
+      switch (pasProgress.masteryTier) {
+        case "bronze":
+          bronzeCount++;
+          break;
+        case "argent":
+          argentCount++;
+          break;
+        case "or":
+          orCount++;
+          break;
       }
     }
-
-    blocks.push({
-      block: blockNum,
-      totalSteps,
-      completedSteps,
-      completionPercentage: totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0,
-    });
   }
 
-  return blocks;
-}
-
-/**
- * Enrichit une step avec son status et sa progression
- */
-export function enrichStepWithProgress(
-  step: Step,
-  progress: UserProgress
-): StepWithProgress {
-  const status = computeStepStatus(step, progress);
-  const stepProgress = progress.steps[step.id];
-  const completion = computeStepCompletion(step, stepProgress);
+  const completionPercentage =
+    totalPas > 0 ? Math.round((completedPas / totalPas) * 100) : 0;
 
   return {
-    ...step,
-    status,
-    progress: stepProgress,
-    completion,
+    cycle,
+    totalPas,
+    completedPas,
+    completionPercentage,
+    masteryDistribution: {
+      bronze: bronzeCount,
+      argent: argentCount,
+      or: orCount,
+    },
   };
 }
 
 /**
- * Enrichit toutes les steps avec leur status et progression
+ * Enrichit un pas avec les données de progression
  */
-export function enrichAllStepsWithProgress(
+export function enrichPasWithProgress(
+  pas: Pas,
   progress: UserProgress
-): StepWithProgress[] {
-  return STEPS.map((step) => enrichStepWithProgress(step, progress));
+): PasWithProgress {
+  const pasProgress = progress.pas[pas.id];
+  const status = computePasStatus(pas, progress);
+  const completion = computePasCompletion(pas, pasProgress);
+  const masteryTier = pasProgress
+    ? calculateMasteryTier(pas, pasProgress)
+    : undefined;
+
+  // Calculer XP gagnée sur ce pas
+  let xpEarned = 0;
+  if (pasProgress) {
+    // Checkpoints validés (via paliers K/E)
+    if (pasProgress.paliersState.K.status === "completed") {
+      xpEarned += pas.checkpoints.length * 5; // 5 XP par checkpoint
+    }
+    if (pasProgress.paliersState.E.status === "completed") {
+      xpEarned += pas.checkpoints.length * 5;
+    }
+    // KPI atteint (palier A)
+    if (pasProgress.paliersState.A.status === "completed") {
+      xpEarned += 30; // KPI_REACHED
+    }
+    // Pas validé
+    if (pasProgress.validatedAt) {
+      xpEarned += 80; // PAS_VALIDATION
+    }
+  }
+
+  return {
+    ...pas,
+    status,
+    progress: pasProgress,
+    completion,
+    xpEarned,
+  };
 }
 
 /**
- * Vérifie si une step peut être validée
+ * Enrichit tous les pas avec les données de progression
  */
-export function canValidateStep(step: Step, stepProgress?: StepProgress): boolean {
-  if (!stepProgress) {
+export function enrichAllPasWithProgress(
+  progress: UserProgress
+): PasWithProgress[] {
+  return PAS.map((pas) => enrichPasWithProgress(pas, progress));
+}
+
+/**
+ * Détermine le pas cible pour le scroll automatique
+ */
+export function getTargetPasIdForScroll(progress: UserProgress): string | null {
+  // Trouver le premier pas IN_PROGRESS
+  for (const pas of PAS) {
+    const status = computePasStatus(pas, progress);
+    if (status === "IN_PROGRESS") {
+      return pas.id;
+    }
+  }
+
+  // Sinon, trouver le premier pas AVAILABLE
+  for (const pas of PAS) {
+    const status = computePasStatus(pas, progress);
+    if (status === "AVAILABLE") {
+      return pas.id;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Détermine le pas actuel (le dernier modifié ou le premier IN_PROGRESS)
+ */
+export function getCurrentPasId(progress: UserProgress): string | null {
+  // Trouver le pas avec la date de mise à jour la plus récente
+  let latestPas: Pas | null = null;
+  let latestDate: string = "";
+
+  for (const pas of PAS) {
+    const pasProgress = progress.pas[pas.id];
+    if (pasProgress && pasProgress.updatedAt > latestDate) {
+      latestDate = pasProgress.updatedAt;
+      latestPas = pas;
+    }
+  }
+
+  if (latestPas) {
+    return latestPas.id;
+  }
+
+  // Sinon, utiliser getTargetPasIdForScroll
+  return getTargetPasIdForScroll(progress);
+}
+
+/**
+ * Vérifie si un pas peut être validé
+ */
+export function canPasBeValidated(
+  pas: Pas,
+  progress: UserProgress
+): boolean {
+  const pasProgress = progress.pas[pas.id];
+  if (!pasProgress) {
     return false;
   }
-  return canStepBeValidated(step, stepProgress);
+
+  return canValidatePas(pas, pasProgress);
+}
+
+/**
+ * Obtient tous les pas d'un cycle avec progression
+ */
+export function getPasByCycleWithProgress(
+  cycle: number,
+  progress: UserProgress
+): PasWithProgress[] {
+  const cyclePas = getPasByCycle(cycle);
+  return cyclePas.map((pas) => enrichPasWithProgress(pas, progress));
+}
+
+/**
+ * Obtient le nombre de pas complétés par cycle
+ */
+export function getCompletedPasCountByCycle(
+  cycle: number,
+  progress: UserProgress
+): number {
+  const cyclePas = getPasByCycle(cycle);
+  return cyclePas.filter((pas) => {
+    const pasProgress = progress.pas[pas.id];
+    return pasProgress?.validatedAt !== undefined;
+  }).length;
+}
+
+/**
+ * Obtient le prochain pas à débloquer
+ */
+export function getNextAvailablePas(progress: UserProgress): Pas | null {
+  for (const pas of PAS) {
+    const status = computePasStatus(pas, progress);
+    if (status === "AVAILABLE") {
+      return pas;
+    }
+  }
+  return null;
+}
+
+/**
+ * Obtient tous les pas verrouillés
+ */
+export function getLockedPas(progress: UserProgress): Pas[] {
+  return PAS.filter((pas) => computePasStatus(pas, progress) === "LOCKED");
+}
+
+/**
+ * Obtient tous les pas en cours
+ */
+export function getInProgressPas(progress: UserProgress): Pas[] {
+  return PAS.filter((pas) => computePasStatus(pas, progress) === "IN_PROGRESS");
+}
+
+/**
+ * Obtient tous les pas complétés
+ */
+export function getCompletedPas(progress: UserProgress): Pas[] {
+  return PAS.filter((pas) => computePasStatus(pas, progress) === "DONE");
 }

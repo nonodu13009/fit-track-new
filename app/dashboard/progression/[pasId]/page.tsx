@@ -8,20 +8,20 @@ import {
   loadProgress,
   updateProgress,
 } from "@/lib/progression/progressStore";
-import { getStepById } from "@/lib/progression/steps";
-import { enrichStepWithProgress } from "@/lib/progression/compute";
-import { StepDetail } from "@/components/progression/StepDetail";
+import { getPasById } from "@/lib/progression/pas";
+import { enrichPasWithProgress } from "@/lib/progression/compute";
+import { PasDetail } from "@/components/progression/PasDetail";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Loading } from "@/components/ui/Loading";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { Badge } from "@/components/ui/Badge";
 
-export default function StepDetailPage() {
+export default function PasDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const stepId = params.stepId as string;
+  const pasId = params.pasId as string;
 
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,14 +58,14 @@ export default function StepDetailPage() {
     );
   }
 
-  const step = getStepById(stepId);
-  if (!step) {
+  const pas = getPasById(pasId);
+  if (!pas) {
     return (
       <div className="space-y-6">
         <DashboardHeader />
         <Card variant="elevated">
           <div className="text-center py-8">
-            <p className="text-lg text-gray-400 mb-4">Étape introuvable</p>
+            <p className="text-lg text-gray-400 mb-4">Pas introuvable</p>
             <Button variant="primary" onClick={() => router.push("/dashboard/progression")}>
               Retour à la progression
             </Button>
@@ -75,42 +75,42 @@ export default function StepDetailPage() {
     );
   }
 
-  const enrichedStep = enrichStepWithProgress(step, progress);
+  const enrichedPas = enrichPasWithProgress(pas, progress);
 
   return (
     <div className="space-y-6">
       <DashboardHeader />
 
-      {/* Header de l'étape */}
+      {/* Header du pas */}
       <Card variant="elevated">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm text-gray-400">
-                Bloc {step.block} • Step {step.order}
+                Cycle {pas.cycle} • Sem. {pas.week} • Pas {pas.order}
               </span>
               <Badge
                 variant={
-                  enrichedStep.status === "DONE"
+                  enrichedPas.status === "DONE"
                     ? "green"
-                    : enrichedStep.status === "IN_PROGRESS"
+                    : enrichedPas.status === "IN_PROGRESS"
                       ? "purple"
-                      : enrichedStep.status === "AVAILABLE"
+                      : enrichedPas.status === "AVAILABLE"
                         ? "cyan"
                         : "gray"
                 }
                 size="sm"
               >
-                {enrichedStep.status === "DONE"
-                  ? "Terminée"
-                  : enrichedStep.status === "IN_PROGRESS"
+                {enrichedPas.status === "DONE"
+                  ? "Terminé"
+                  : enrichedPas.status === "IN_PROGRESS"
                     ? "En cours"
-                    : enrichedStep.status === "AVAILABLE"
+                    : enrichedPas.status === "AVAILABLE"
                       ? "Disponible"
-                      : "Verrouillée"}
+                      : "Verrouillé"}
               </Badge>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">{step.title}</h1>
+            <h1 className="text-2xl font-bold text-white mb-2">{pas.title}</h1>
           </div>
           <Button
             variant="ghost"
@@ -122,8 +122,8 @@ export default function StepDetailPage() {
         </div>
       </Card>
 
-      {/* Détails de l'étape */}
-      <StepDetail step={step} progress={progress} onUpdate={handleUpdate} />
+      {/* Détails du pas */}
+      <PasDetail pas={pas} progress={progress} onUpdate={handleUpdate} />
     </div>
   );
 }

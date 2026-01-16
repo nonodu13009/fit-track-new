@@ -27,15 +27,23 @@ export function scrollToElement(
 }
 
 /**
- * Scroll vers une step dans la timeline
+ * Scroll vers un pas dans la timeline
  */
 export function scrollToStep(stepId: string): void {
-  const elementId = `step-node-${stepId}`;
+  // Compatibilité: accepter stepId ou pasId
+  const elementId = `pas-${stepId}`;
   scrollToElement(elementId);
 }
 
 /**
- * Scroll vers la step active (utilisé au chargement de la page)
+ * Scroll vers un pas (nouveau nom)
+ */
+export function scrollToPas(pasId: string): void {
+  scrollToStep(pasId);
+}
+
+/**
+ * Scroll vers le pas actif (utilisé au chargement de la page)
  */
 export function scrollToActiveStep(stepId: string | null): void {
   if (!stepId) {
@@ -47,3 +55,8 @@ export function scrollToActiveStep(stepId: string | null): void {
     scrollToStep(stepId);
   }, 100);
 }
+
+/**
+ * Alias pour compatibilité
+ */
+export const scrollToActivePas = scrollToActiveStep;

@@ -8,38 +8,40 @@ import {
   updateProgress,
 } from "@/lib/progression/progressStore";
 import {
-  enrichAllStepsWithProgress,
-  getTargetStepIdForScroll,
+  enrichAllPasWithProgress,
+  getTargetPasIdForScroll,
   computeGlobalCompletion,
-  computeBlockProgress,
+  computeCycleProgress,
 } from "@/lib/progression/compute";
 import { Timeline } from "@/components/progression/Timeline";
 import { GamificationHeader } from "@/components/progression/GamificationHeader";
 import { BadgesGrid } from "@/components/progression/BadgesGrid";
+import { Quests } from "@/components/progression/Quests";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Loading } from "@/components/ui/Loading";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
-import { scrollToActiveStep } from "@/lib/progression/scroll";
-import { getCurrentStepId } from "@/lib/progression/compute";
+import { refreshQuests, updateAllQuests } from "@/lib/progression/quests";
+import { getLogActionXP } from "@/lib/progression/gamification";
+import { createLogEntry, addLogEntry } from "@/lib/progression/gamification";
 
 export default function ProgressionPage() {
   const { user } = useAuth();
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"timeline" | "list">("timeline");
-  const [targetStepId, setTargetStepId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        const loadedProgress = await loadProgress(user?.uid || null);
+        let loadedProgress = await loadProgress(user?.uid || null);
+        
+        // Rafraîchir les quêtes
+        loadedProgress.quests = refreshQuests(loadedProgress);
+        loadedProgress.quests = updateAllQuests(loadedProgress);
+        
         setProgress(loadedProgress);
-
-        // Calculer la step cible pour auto-scroll
-        const targetId = getTargetStepIdForScroll(loadedProgress);
-        setTargetStepId(targetId);
       } catch (error) {
         console.error("Erreur lors du chargement:", error);
       } finally {
@@ -50,123 +52,113 @@ export default function ProgressionPage() {
     load();
   }, [user]);
 
-  useEffect(() => {
-    if (targetStepId && !loading) {
-      scrollToActiveStep(targetStepId);
-    }
-  }, [targetStepId, loading]);
-
   const handleUpdate = async (updatedProgress: UserProgress) => {
     const finalProgress = await updateProgress(updatedProgress, user?.uid || null);
     setProgress(finalProgress);
-
-    // Recalculer la step cible
-    const targetId = getTargetStepIdForScroll(finalProgress);
-    setTargetStepId(targetId);
   };
 
-  const handleScrollToActive = () => {
+  const handleSwipeShort = async (pasId: string) => {
     if (!progress) return;
-    const currentId = getCurrentStepId(progress);
-    if (currentId) {
-      scrollToActiveStep(currentId);
-      setTargetStepId(currentId);
+    
+    const xpGained = getLogActionXP(
+      progress.gamification.lastActiveDate,
+      new Date().toISOString()
+    );
+    
+    if (xpGained > 0) {
+      const logEntry = createLogEntry("log", pasId, undefined, xpGained, undefined, `Log activité: ${pasId}`);
+      const updatedProgress: UserProgress = {
+        ...progress,
+        log: addLogEntry(progress.log, logEntry),
+      };
+      await handleUpdate(updatedProgress);
     }
+  };
+
+  const handleSwipeLong = async (pasId: string) => {
+    // Swipe long = test terminé (KPI enregistré)
+    // À implémenter selon les besoins
+    console.log("Swipe long sur pas:", pasId);
   };
 
   if (loading || !progress) {
     return (
       <div className="space-y-6">
         <DashboardHeader />
-        <div className="flex justify-center py-12">
-          <Loading size="lg" color="purple" />
-        </div>
+        <Loading />
       </div>
     );
   }
 
-  const enrichedSteps = enrichAllStepsWithProgress(progress);
+  const pasWithProgress = enrichAllPasWithProgress(progress);
   const globalCompletion = computeGlobalCompletion(progress);
-  const blockProgress = computeBlockProgress(progress);
+  const cycleProgresses = [1, 2, 3, 4].map((cycle) =>
+    computeCycleProgress(cycle, progress)
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       <DashboardHeader />
-
-      {/* Gamification Header */}
+      
       <GamificationHeader gamification={progress.gamification} />
 
       {/* Stats globales */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Card variant="glass">
-          <div className="space-y-2">
-            <p className="text-sm text-gray-400">Completion globale</p>
-            <p className="text-3xl font-bold text-accent-cyan">{globalCompletion}%</p>
-          </div>
-        </Card>
-        {blockProgress.map((block) => (
-          <Card key={block.block} variant="glass">
-            <div className="space-y-2">
-              <p className="text-sm text-gray-400">Bloc {block.block}</p>
-              <p className="text-3xl font-bold text-accent-purple">
-                {block.completionPercentage}%
-              </p>
-              <p className="text-xs text-gray-500">
-                {block.completedSteps}/{block.totalSteps}
-              </p>
+      <Card variant="elevated">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-accent-purple">
+              {globalCompletion}%
             </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-2">
-          <Button
-            variant={viewMode === "timeline" ? "primary" : "secondary"}
-            size="sm"
-            onClick={() => setViewMode("timeline")}
-          >
-            Timeline
-          </Button>
-          <Button
-            variant={viewMode === "list" ? "primary" : "secondary"}
-            size="sm"
-            onClick={() => setViewMode("list")}
-          >
-            Liste
-          </Button>
+            <div className="text-xs text-gray-400">Complétion globale</div>
+          </div>
+          {cycleProgresses.map((cp) => (
+            <div key={cp.cycle} className="text-center">
+              <div className="text-2xl font-bold text-white">
+                {cp.completionPercentage}%
+              </div>
+              <div className="text-xs text-gray-400">Cycle {cp.cycle}</div>
+            </div>
+          ))}
         </div>
+      </Card>
+
+      {/* Quêtes */}
+      <Quests quests={progress.quests || []} />
+
+      {/* Toggle view mode */}
+      <div className="flex items-center justify-center gap-2">
         <Button
-          variant="ghost"
+          variant={viewMode === "timeline" ? "primary" : "secondary"}
+          onClick={() => setViewMode("timeline")}
           size="sm"
-          onClick={handleScrollToActive}
         >
-          Aller à l&apos;étape active
+          Timeline
+        </Button>
+        <Button
+          variant={viewMode === "list" ? "primary" : "secondary"}
+          onClick={() => setViewMode("list")}
+          size="sm"
+        >
+          Liste
         </Button>
       </div>
 
-      {/* Timeline ou Liste */}
-      {viewMode === "timeline" ? (
+      {/* Timeline */}
+      {viewMode === "timeline" && (
         <Timeline
-          steps={enrichedSteps}
-          targetStepId={targetStepId}
-          onStepClick={(stepId) => {
-            setTargetStepId(stepId);
-            scrollToActiveStep(stepId);
-          }}
+          progress={progress}
+          pasWithProgress={pasWithProgress}
+          onSwipeShort={handleSwipeShort}
+          onSwipeLong={handleSwipeLong}
         />
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {enrichedSteps.map((step) => (
-            <div key={step.id} id={`step-node-${step.id}`}>
-              <Timeline
-                steps={[step]}
-                targetStepId={step.id === targetStepId ? step.id : undefined}
-                onStepClick={(stepId) => {
-                  setTargetStepId(stepId);
-                }}
-              />
+      )}
+
+      {/* Liste */}
+      {viewMode === "list" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {pasWithProgress.map((pas) => (
+            <div key={pas.id}>
+              {/* Utiliser SwipeCard ou un composant de liste simplifié */}
             </div>
           ))}
         </div>

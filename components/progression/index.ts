@@ -1,5 +1,10 @@
 export { Timeline } from "./Timeline";
-export { StepCard } from "./StepCard";
-export { StepDetail } from "./StepDetail";
+export { SwipeCard } from "./SwipeCard";
+export { PasDetail } from "./PasDetail";
 export { GamificationHeader } from "./GamificationHeader";
 export { BadgesGrid } from "./BadgesGrid";
+export { HoldToConfirm } from "./HoldToConfirm";
+export { ComboBuilder } from "./ComboBuilder";
+export { BossFight } from "./BossFight";
+export { Quests } from "./Quests";
+export { MasteryBadge } from "./MasteryBadge";

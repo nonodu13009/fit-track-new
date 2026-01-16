@@ -1,5 +1,6 @@
 /**
  * Store de progression avec localStorage et Firestore fallback
+ * Système Gracie Barra avec pas/cycles
  */
 
 "use client";
@@ -7,6 +8,7 @@
 import { UserProgress, Gamification } from "./types";
 import { getDocument, updateDocument, createDocument } from "@/lib/firebase/firestore";
 import { recalculateGamification } from "./gamification";
+import { migrateIfNeeded } from "./migration";
 
 const STORAGE_KEY = "jjb-progression";
 const FIRESTORE_COLLECTION = "progression";
@@ -16,13 +18,18 @@ const FIRESTORE_COLLECTION = "progression";
  */
 export function createEmptyProgress(): UserProgress {
   return {
-    steps: {},
+    pas: {},
     gamification: {
       xpTotal: 0,
       level: 1,
+      tokens: 0,
       streak: 0,
+      streakFreeze: 0,
       badges: [],
+      mastery: {},
+      bossFights: {},
     },
+    quests: [],
     log: [],
   };
 }
@@ -42,9 +49,12 @@ export function loadProgressFromLocalStorage(): UserProgress | null {
     }
 
     const parsed = JSON.parse(stored);
+    // Migrer si nécessaire
+    const migrated = migrateIfNeeded(parsed);
+    
     // Valider la structure basique
-    if (parsed && typeof parsed === "object" && "steps" in parsed && "gamification" in parsed) {
-      return parsed as UserProgress;
+    if (migrated && typeof migrated === "object" && "pas" in migrated && "gamification" in migrated) {
+      return migrated as UserProgress;
     }
   } catch (error) {
     console.error("Erreur lors du chargement depuis localStorage:", error);
@@ -83,21 +93,33 @@ export async function loadProgressFromFirestore(
     // Convertir les timestamps Firestore en strings ISO si nécessaire
     const progress = doc as any;
     
+    // Migrer si nécessaire
+    const migrated = migrateIfNeeded(progress);
+    
     // Normaliser les dates
-    if (progress.steps) {
-      for (const stepId in progress.steps) {
-        const stepProgress = progress.steps[stepId];
-        if (stepProgress.updatedAt && typeof stepProgress.updatedAt.toDate === "function") {
-          stepProgress.updatedAt = stepProgress.updatedAt.toDate().toISOString();
+    if (migrated.pas) {
+      for (const pasId in migrated.pas) {
+        const pasProgress = migrated.pas[pasId] as any;
+        if (pasProgress.updatedAt && typeof pasProgress.updatedAt.toDate === "function") {
+          pasProgress.updatedAt = pasProgress.updatedAt.toDate().toISOString();
         }
-        if (stepProgress.validatedAt && typeof stepProgress.validatedAt.toDate === "function") {
-          stepProgress.validatedAt = stepProgress.validatedAt.toDate().toISOString();
+        if (pasProgress.validatedAt && typeof pasProgress.validatedAt.toDate === "function") {
+          pasProgress.validatedAt = pasProgress.validatedAt.toDate().toISOString();
+        }
+        // Normaliser les dates des paliers
+        if (pasProgress.paliersState) {
+          ["K", "E", "A", "I"].forEach((palier) => {
+            const palierData = pasProgress.paliersState[palier];
+            if (palierData?.completedAt && typeof palierData.completedAt.toDate === "function") {
+              palierData.completedAt = palierData.completedAt.toDate().toISOString();
+            }
+          });
         }
       }
     }
 
-    if (progress.gamification?.badges) {
-      progress.gamification.badges = progress.gamification.badges.map((badge: any) => {
+    if (migrated.gamification?.badges) {
+      migrated.gamification.badges = migrated.gamification.badges.map((badge: any) => {
         if (badge.earnedAt && typeof badge.earnedAt.toDate === "function") {
           badge.earnedAt = badge.earnedAt.toDate().toISOString();
         }
@@ -105,8 +127,19 @@ export async function loadProgressFromFirestore(
       });
     }
 
-    if (progress.log) {
-      progress.log = progress.log.map((entry: any) => {
+    if (migrated.quests) {
+      migrated.quests = migrated.quests.map((quest: any) => {
+        ["createdAt", "expiresAt", "completedAt"].forEach((field) => {
+          if (quest[field] && typeof quest[field].toDate === "function") {
+            quest[field] = quest[field].toDate().toISOString();
+          }
+        });
+        return quest;
+      });
+    }
+
+    if (migrated.log) {
+      migrated.log = migrated.log.map((entry: any) => {
         if (entry.ts && typeof entry.ts.toDate === "function") {
           entry.ts = entry.ts.toDate().toISOString();
         }
@@ -114,7 +147,7 @@ export async function loadProgressFromFirestore(
       });
     }
 
-    return progress as UserProgress;
+    return migrated as UserProgress;
   } catch (error) {
     console.error("Erreur lors du chargement depuis Firestore:", error);
     return null;
