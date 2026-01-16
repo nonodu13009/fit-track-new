@@ -206,30 +206,61 @@ export async function POST(request: NextRequest) {
       const toolCalls = assistantMessage.tool_calls || assistantMessage.toolCalls;
       
       if (toolCalls && toolCalls.length > 0) {
-        // Ajouter message assistant avec tool_calls normalisés
-        messages.push({
-          role: "assistant",
-          tool_calls: toolCalls.map((tc: any) => ({
+        console.log(`[Coach API] ${toolCalls.length} tool call(s) détecté(s)`);
+        
+        // Normaliser les tool calls avec type="function" requis
+        const normalizedToolCalls = toolCalls.map((tc: any) => {
+          if (!tc.id) {
+            console.error(`[Coach API] ⚠️ Tool call sans ID:`, tc);
+          }
+          return {
             id: tc.id,
             type: "function",
             function: {
               name: tc.function?.name,
               arguments: tc.function?.arguments || "{}",
             },
-          })),
+          };
+        });
+
+        // Ajouter message assistant avec tool_calls normalisés
+        messages.push({
+          role: "assistant",
+          tool_calls: normalizedToolCalls,
           content: null,
         });
 
-        // Exécuter chaque tool et ajouter réponse
+        console.log(`[Coach API] Message assistant avec tool_calls ajouté:`, JSON.stringify(normalizedToolCalls, null, 2));
+
+        // Exécuter chaque tool et ajouter réponse (dans l'ordre)
         for (const toolCall of toolCalls) {
+          if (!toolCall.id) {
+            console.error(`[Coach API] ⚠️ Tool call sans ID, impossible de créer la réponse`);
+            continue;
+          }
+          
           const toolResult = await executeTool(toolCall, userId);
-          messages.push({
+          const toolResponse = {
             role: "tool",
             tool_call_id: toolCall.id,
             name: toolCall.function?.name,
             content: JSON.stringify(toolResult),
+          };
+          
+          messages.push(toolResponse);
+          console.log(`[Coach API] Tool response ajoutée:`, {
+            tool_call_id: toolCall.id,
+            name: toolCall.function?.name,
+            success: toolResult.success !== false,
           });
         }
+        
+        console.log(`[Coach API] Total messages avant 2ème appel: ${messages.length}`);
+        console.log(`[Coach API] Messages:`, JSON.stringify(messages.map((m: any) => ({
+          role: m.role,
+          hasToolCalls: !!m.tool_calls,
+          tool_call_id: m.tool_call_id,
+        })), null, 2));
 
         // DEUXIÈME APPEL : avec tool responses
         const finalResponse = await retryWithBackoff(
