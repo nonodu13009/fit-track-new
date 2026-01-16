@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Appel Mistral avec tool calling - Approche simple en 2 étapes
+    // Appel Mistral avec tool calling - Boucle pour gérer plusieurs rounds
     const mistral = getMistralClient();
     let messages: any[] = [
       {
@@ -193,45 +193,56 @@ export async function POST(request: NextRequest) {
 
     // Tool calling activé : permet au coach de mettre à jour l'agenda
     const ENABLE_TOOL_CALLING = true;
+    const MAX_ITERATIONS = 5; // Limite pour éviter les boucles infinies
 
     try {
-      // PREMIER APPEL : avec tools disponibles
-      console.log(`[Coach API] Premier appel Mistral avec ${messages.length} message(s) initial(aux)`);
-      const firstResponse = await retryWithBackoff(
-        () => mistral.chat.complete({
-          model: DEFAULT_MODEL,
-          messages,
-          tools: ENABLE_TOOL_CALLING ? COACH_TOOLS : undefined,
-          temperature: 0.7,
-          maxTokens: 1000,
-        }),
-        3,
-        1000
-      );
-
-      const assistantMessage = firstResponse.choices?.[0]?.message;
-      if (!assistantMessage) {
-        return NextResponse.json({ error: "Pas de réponse du modèle" }, { status: 500 });
-      }
-
-      // Vérifier si tool calls présents
-      const toolCalls = (assistantMessage as any).tool_calls || assistantMessage.toolCalls;
-      
-      if (toolCalls && toolCalls.length > 0) {
-        console.log(`[Coach API] ${toolCalls.length} tool call(s) détecté(s)`);
-        console.log(`[Coach API] Tool calls originaux:`, JSON.stringify(toolCalls, null, 2));
+      // Boucle pour gérer plusieurs rounds de tool calls
+      for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+        console.log(`[Coach API] Itération ${iteration + 1}/${MAX_ITERATIONS} - Appel Mistral avec ${messages.length} message(s)`);
         
+        const response = await retryWithBackoff(
+          () => mistral.chat.complete({
+            model: DEFAULT_MODEL,
+            messages,
+            tools: ENABLE_TOOL_CALLING ? COACH_TOOLS : undefined,
+            temperature: 0.7,
+            maxTokens: 1000,
+          }),
+          3,
+          1000
+        );
+
+        const assistantMessage = response.choices?.[0]?.message;
+        if (!assistantMessage) {
+          return NextResponse.json({ error: "Pas de réponse du modèle" }, { status: 500 });
+        }
+
         // ⚠️ CRITIQUE : Utiliser le message assistant EXACTEMENT comme Mistral le retourne
         // Ne RIEN modifier, utiliser tel quel
-        const assistantMsgForHistory: any = {
-          role: "assistant",
-          tool_calls: toolCalls, // Utiliser directement les tool calls de Mistral
-          content: null, // Toujours null quand tool_calls présent
-        };
+        messages.push(assistantMessage);
 
-        messages.push(assistantMsgForHistory);
-        console.log(`[Coach API] Message assistant ajouté avec ${toolCalls.length} tool call(s)`);
+        // Vérifier si tool calls présents
+        const toolCalls = (assistantMessage as any).tool_calls || assistantMessage.toolCalls;
+        
+        // Si pas de tool calls, c'est la réponse finale
+        if (!toolCalls || toolCalls.length === 0) {
+          console.log(`[Coach API] Réponse finale obtenue (pas de tool calls)`);
+          const content = assistantMessage.content;
+          const responseText = typeof content === "string"
+            ? content
+            : Array.isArray(content)
+              ? content.map((c: any) => typeof c === "string" ? c : c.text || "").join("")
+              : "";
 
+          return NextResponse.json({
+            message: responseText || "Réponse vide du modèle",
+            model: DEFAULT_MODEL,
+          });
+        }
+
+        // Il y a des tool calls, les exécuter
+        console.log(`[Coach API] ${toolCalls.length} tool call(s) détecté(s) à l'itération ${iteration + 1}`);
+        
         // Exécuter chaque tool et ajouter réponse (dans l'ordre EXACT)
         // ⚠️ CRITIQUE : TOUJOURS créer une réponse pour chaque tool call
         // ⚠️ CRITIQUE : Utiliser les IDs EXACTS de Mistral, ne rien modifier
@@ -240,7 +251,7 @@ export async function POST(request: NextRequest) {
           let toolCallId = toolCall.id;
           const toolName = toolCall.function?.name;
           
-          // Si pas d'ID, utiliser l'ID du message assistant normalisé
+          // Si pas d'ID, utiliser l'ID du message assistant
           if (!toolCallId) {
             console.error(`[Coach API] ❌ ERREUR CRITIQUE: Tool call ${i} sans ID !`, toolCall);
             // Récupérer l'ID depuis le message assistant qu'on vient d'ajouter
@@ -282,79 +293,34 @@ export async function POST(request: NextRequest) {
           console.log(`[Coach API] Tool response ${i + 1}/${toolCalls.length}: ${toolName || "unknown"} (ID: ${toolCallId})`);
         }
         
-        // Vérification finale
-        const assistantMsg = messages.find((m: any) => m.role === "assistant" && m.tool_calls);
+        // Vérification de sécurité
+        const assistantMsgs = messages.filter((m: any) => m.role === "assistant" && (m.tool_calls || m.toolCalls));
         const toolMsgs = messages.filter((m: any) => m.role === "tool");
-        console.log(`[Coach API] Vérification: ${assistantMsg?.tool_calls?.length || 0} tool calls, ${toolMsgs.length} tool responses`);
+        console.log(`[Coach API] Vérification: ${assistantMsgs.length} assistant(s) avec tool_calls, ${toolMsgs.length} tool response(s)`);
         
-        if (assistantMsg && assistantMsg.tool_calls) {
-          const callIds = assistantMsg.tool_calls.map((tc: any) => tc.id);
-          const responseIds = toolMsgs.map((tm: any) => tm.tool_call_id);
-          console.log(`[Coach API] Tool call IDs:`, callIds);
-          console.log(`[Coach API] Tool response IDs:`, responseIds);
-          
-          if (callIds.length !== responseIds.length) {
-            console.error(`[Coach API] ❌ NOMBRE DIFFÉRENT: ${callIds.length} calls vs ${responseIds.length} responses`);
-          }
-        }
-
-        // DEUXIÈME APPEL : avec tool responses
-        // ⚠️ LOG COMPLET pour debugging
-        console.log(`[Coach API] ===== PAYLOAD 2ÈME APPEL MISTRAL =====`);
-        console.log(`[Coach API] Nombre de messages: ${messages.length}`);
-        messages.forEach((msg: any, idx: number) => {
-          console.log(`[Coach API] Message ${idx + 1}:`, {
-            role: msg.role,
-            hasToolCalls: !!msg.tool_calls,
-            toolCallsCount: msg.tool_calls?.length || 0,
-            hasToolCallId: !!msg.tool_call_id,
-            toolCallId: msg.tool_call_id,
-            contentLength: msg.content ? (typeof msg.content === 'string' ? msg.content.length : JSON.stringify(msg.content).length) : 0,
-          });
-        });
-        console.log(`[Coach API] =====================================`);
-        
-        const finalResponse = await retryWithBackoff(
-          () => mistral.chat.complete({
-            model: DEFAULT_MODEL,
-            messages,
-            temperature: 0.7,
-            maxTokens: 1000,
-          }),
-          3,
-          1000
+        // Vérifier que chaque tool call a une réponse
+        const totalToolCalls = assistantMsgs.reduce(
+          (sum: number, msg: any) => sum + ((msg.tool_calls || msg.toolCalls || []).length),
+          0
         );
-
-        const finalMessage = finalResponse.choices?.[0]?.message;
-        if (!finalMessage) {
-          return NextResponse.json({ error: "Pas de réponse finale du modèle" }, { status: 500 });
+        
+        if (totalToolCalls !== toolMsgs.length) {
+          console.error(`[Coach API] ❌ NOMBRE DIFFÉRENT: ${totalToolCalls} tool calls vs ${toolMsgs.length} tool responses`);
+          // Continuer quand même, mais logger l'erreur
         }
 
-        const content = finalMessage.content;
-        const responseText = typeof content === "string"
-          ? content
-          : Array.isArray(content)
-            ? content.map((c: any) => typeof c === "string" ? c : c.text || "").join("")
-            : "";
-
-        return NextResponse.json({
-          message: responseText,
-          model: DEFAULT_MODEL,
-        });
-      } else {
-        // Pas de tool calls, retourner réponse directe
-        const content = assistantMessage.content;
-        const responseText = typeof content === "string"
-          ? content
-          : Array.isArray(content)
-            ? content.map((c: any) => typeof c === "string" ? c : c.text || "").join("")
-            : "";
-
-        return NextResponse.json({
-          message: responseText,
-          model: DEFAULT_MODEL,
-        });
+        // La boucle continue avec les tool responses pour le prochain appel
+        console.log(`[Coach API] Préparation pour l'itération suivante avec ${messages.length} messages`);
       }
+
+      // Si MAX_ITERATIONS atteint, retourner une erreur
+      console.error(`[Coach API] ❌ Limite de ${MAX_ITERATIONS} itérations atteinte`);
+      return NextResponse.json(
+        { 
+          error: "Le modèle demande trop d'actions successives. Veuillez reformuler votre demande de manière plus simple." 
+        },
+        { status: 500 }
+      );
     } catch (error: any) {
       // Logging détaillé pour debugging
       console.error("=== ERREUR API COACH ===");
