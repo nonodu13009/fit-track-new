@@ -24,6 +24,7 @@ export function useSpeechRecognition({
   const [isSupported, setIsSupported] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const previousFinalTranscriptRef = useRef<string>("");
 
   // Vérifier si l'API est supportée
   useEffect(() => {
