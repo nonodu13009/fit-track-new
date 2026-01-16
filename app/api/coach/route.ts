@@ -105,34 +105,53 @@ export async function POST(request: NextRequest) {
     let iteration = 0;
 
     while (iteration < maxIterations) {
-      const response = await mistral.chat.complete({
-        model: DEFAULT_MODEL,
-        messages,
-        tools: COACH_TOOLS,
-        temperature: 0.7,
-        maxTokens: 1000,
-      });
-
-      const choice = response.choices?.[0];
-      if (!choice) break;
-
-      const assistantMessage = choice.message;
-
-      // Si l'IA veut utiliser un tool (vérifier tool_calls avec underscore)
-      const toolCalls = (assistantMessage as any).tool_calls || (assistantMessage as any).toolCalls;
-      
-      if (toolCalls && toolCalls.length > 0) {
-        // Ajouter le message de l'assistant avec tool calls
-        messages.push({
-          role: "assistant",
-          content: assistantMessage.content || null,
-          tool_calls: toolCalls,
+      try {
+        const response = await mistral.chat.complete({
+          model: DEFAULT_MODEL,
+          messages,
+          tools: COACH_TOOLS,
+          temperature: 0.7,
+          maxTokens: 1000,
         });
 
-        // Exécuter chaque tool call
-        for (const toolCall of toolCalls) {
-          const toolName = toolCall.function.name;
-          const toolArgs = JSON.parse(toolCall.function.arguments);
+        const choice = response.choices?.[0];
+        if (!choice) {
+          finalResponse = "Désolé, je n'ai pas reçu de réponse du modèle.";
+          break;
+        }
+
+        const assistantMessage = choice.message;
+
+        // Si l'IA veut utiliser un tool (vérifier tool_calls avec underscore)
+        const toolCalls = (assistantMessage as any).tool_calls || (assistantMessage as any).toolCalls;
+        
+        if (toolCalls && toolCalls.length > 0) {
+          // Ajouter le message de l'assistant avec tool calls
+          messages.push({
+            role: "assistant",
+            content: assistantMessage.content || null,
+            tool_calls: toolCalls,
+          });
+
+          // Exécuter chaque tool call
+          for (const toolCall of toolCalls) {
+            try {
+              const toolName = toolCall.function?.name;
+              if (!toolName) {
+                console.error("Tool call sans nom:", toolCall);
+                continue;
+              }
+
+              let toolArgs: any = {};
+              try {
+                const argsString = toolCall.function?.arguments;
+                if (argsString) {
+                  toolArgs = typeof argsString === "string" ? JSON.parse(argsString) : argsString;
+                }
+              } catch (parseError) {
+                console.error("Erreur parsing arguments:", parseError, toolCall.function?.arguments);
+                toolArgs = {};
+              }
 
           let toolResult: any;
 
@@ -154,32 +173,79 @@ export async function POST(request: NextRequest) {
             toolResult = { error: error.message || "Erreur lors de l'exécution" };
           }
 
-          // Ajouter le résultat du tool (utiliser tool_call_id avec underscore)
-          messages.push({
-            role: "tool",
-            content: JSON.stringify(toolResult),
-            name: toolName,
-            tool_call_id: toolCall.id,
-          });
+              // Ajouter le résultat du tool (utiliser tool_call_id avec underscore)
+              messages.push({
+                role: "tool",
+                content: JSON.stringify(toolResult),
+                name: toolName,
+                tool_call_id: toolCall.id || toolCall.tool_call_id,
+              });
+            } catch (toolError: any) {
+              console.error(`Erreur lors de l'exécution du tool ${toolName}:`, toolError);
+              // Ajouter un message d'erreur pour le tool
+              messages.push({
+                role: "tool",
+                content: JSON.stringify({
+                  success: false,
+                  error: toolError.message || "Erreur lors de l'exécution",
+                }),
+                name: toolName,
+                tool_call_id: toolCall.id || toolCall.tool_call_id,
+              });
+            }
+          }
+
+          iteration++;
+          continue;
         }
 
-        iteration++;
-        continue;
-      }
-
-      // Pas de tool call, récupérer la réponse finale
-      const content = assistantMessage.content;
-      finalResponse =
-        typeof content === "string"
-          ? content
-          : Array.isArray(content)
+        // Pas de tool call, récupérer la réponse finale
+        const content = assistantMessage.content;
+        finalResponse =
+          typeof content === "string"
             ? content
-                .map((chunk: any) =>
-                  typeof chunk === "string" ? chunk : chunk.text || ""
-                )
-                .join("")
-            : "Désolé, je n'ai pas pu générer de réponse.";
-      break;
+            : Array.isArray(content)
+              ? content
+                  .map((chunk: any) =>
+                    typeof chunk === "string" ? chunk : chunk.text || ""
+                  )
+                  .join("")
+              : "Désolé, je n'ai pas pu générer de réponse.";
+        break;
+      } catch (iterationError: any) {
+        console.error(`Erreur lors de l'itération ${iteration}:`, iterationError);
+        // Si c'est la première itération, essayer sans tools
+        if (iteration === 0) {
+          try {
+            const fallbackResponse = await mistral.chat.complete({
+              model: DEFAULT_MODEL,
+              messages: [
+                {
+                  role: "system",
+                  content: COACH_SYSTEM_PROMPT + (contextText ? `\n\n${contextText}` : ""),
+                },
+                {
+                  role: "user",
+                  content: message,
+                },
+              ],
+              temperature: 0.7,
+              maxTokens: 1000,
+            });
+            const fallbackContent = fallbackResponse.choices?.[0]?.message?.content;
+            finalResponse =
+              typeof fallbackContent === "string"
+                ? fallbackContent
+                : "Désolé, je n'ai pas pu générer de réponse.";
+            break;
+          } catch (fallbackError: any) {
+            console.error("Erreur fallback:", fallbackError);
+            throw fallbackError;
+          }
+        } else {
+          throw iterationError;
+        }
+      }
     }
 
     if (!finalResponse && iteration >= maxIterations) {
