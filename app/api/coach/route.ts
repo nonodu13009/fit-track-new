@@ -106,10 +106,13 @@ export async function POST(request: NextRequest) {
 
     while (iteration < maxIterations) {
       try {
+        // Vérifier si c'est la première itération et si on doit utiliser les tools
+        const useTools = iteration === 0 ? COACH_TOOLS : undefined;
+        
         const response = await mistral.chat.complete({
           model: DEFAULT_MODEL,
           messages,
-          tools: COACH_TOOLS,
+          ...(useTools ? { tools: useTools } : {}),
           temperature: 0.7,
           maxTokens: 1000,
         });
