@@ -208,76 +208,91 @@ export async function POST(request: NextRequest) {
       
       if (toolCalls && toolCalls.length > 0) {
         console.log(`[Coach API] ${toolCalls.length} tool call(s) détecté(s)`);
+        console.log(`[Coach API] Tool calls originaux:`, JSON.stringify(toolCalls, null, 2));
         
-        // Normaliser les tool calls avec type="function" requis
-        // ⚠️ CRITIQUE : Générer un ID si manquant AVANT de normaliser
-        const normalizedToolCalls = toolCalls.map((tc: any) => {
-          let toolCallId = tc.id;
-          
-          // Si pas d'ID, générer un ID de fallback (cas exceptionnel)
-          if (!toolCallId) {
-            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            toolCallId = "";
-            for (let i = 0; i < 12; i++) {
-              toolCallId += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            console.error(`[Coach API] ⚠️ Tool call sans ID, génération ID fallback: ${toolCallId}`);
-          }
-          
-          return {
-            id: toolCallId,
-            type: "function",
-            function: {
-              name: tc.function?.name || "unknown",
-              arguments: tc.function?.arguments || "{}",
-            },
-          };
-        });
-
-        // Ajouter message assistant avec tool_calls normalisés
-        messages.push({
+        // ⚠️ CRITIQUE : Utiliser le message assistant ORIGINAL de Mistral
+        // Ne pas recréer le message, utiliser celui de Mistral directement
+        // Mais s'assurer que le format est correct
+        const assistantMsgWithTools: any = {
           role: "assistant",
-          tool_calls: normalizedToolCalls,
-          content: null,
-        });
+          tool_calls: toolCalls.map((tc: any) => {
+            // S'assurer que chaque tool call a le bon format
+            const toolCallId = tc.id;
+            if (!toolCallId) {
+              console.error(`[Coach API] ⚠️ Tool call sans ID:`, tc);
+            }
+            
+            return {
+              id: toolCallId,
+              type: "function",
+              function: {
+                name: tc.function?.name,
+                arguments: tc.function?.arguments || "{}",
+              },
+            };
+          }),
+        };
+        
+        // Ne pas inclure content si tool_calls est présent
+        // (selon documentation Mistral)
+        if (!assistantMessage.content || assistantMessage.content === null) {
+          assistantMsgWithTools.content = null;
+        }
 
-        console.log(`[Coach API] Message assistant avec tool_calls ajouté:`, JSON.stringify(normalizedToolCalls, null, 2));
+        messages.push(assistantMsgWithTools);
+        console.log(`[Coach API] Message assistant avec tool_calls ajouté:`, JSON.stringify(assistantMsgWithTools.tool_calls, null, 2));
 
         // Exécuter chaque tool et ajouter réponse (dans l'ordre)
-        // ⚠️ CRITIQUE : Utiliser normalizedToolCalls pour garantir correspondance des IDs
+        // ⚠️ CRITIQUE : Utiliser toolCalls originaux pour garantir correspondance exacte des IDs
         // ⚠️ CRITIQUE : Chaque tool call DOIT recevoir une réponse (même si invalide)
-        for (let i = 0; i < normalizedToolCalls.length; i++) {
-          const normalizedCall = normalizedToolCalls[i];
+        for (let i = 0; i < toolCalls.length; i++) {
           const originalCall = toolCalls[i];
+          let toolCallId = originalCall.id;
           
-          const toolCallId = normalizedCall.id;
-          const toolName = normalizedCall.function.name;
+          // Si pas d'ID, utiliser l'ID du message assistant normalisé
+          if (!toolCallId) {
+            const assistantMsg = messages[messages.length - 1];
+            if (assistantMsg && assistantMsg.tool_calls && assistantMsg.tool_calls[i]) {
+              toolCallId = assistantMsg.tool_calls[i].id;
+              console.error(`[Coach API] ⚠️ Tool call ${i} sans ID, utilisation ID normalisé: ${toolCallId}`);
+            } else {
+              console.error(`[Coach API] ⚠️ Tool call ${i} sans ID et impossible de récupérer ID normalisé`);
+              // Générer un ID de fallback
+              const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+              toolCallId = "";
+              for (let j = 0; j < 9; j++) { // 9 caractères comme Mistral
+                toolCallId += chars.charAt(Math.floor(Math.random() * chars.length));
+              }
+            }
+          }
+          
+          const toolName = originalCall.function?.name;
           
           let toolResult: any;
           
           // Si pas de nom de fonction, retourner erreur
-          if (!toolName || toolName === "unknown") {
-            console.error(`[Coach API] ⚠️ Tool call sans nom de fonction valide`);
+          if (!toolName) {
+            console.error(`[Coach API] ⚠️ Tool call ${i} sans nom de fonction`);
             toolResult = {
               success: false,
               error: "Tool call invalide : nom de fonction manquant",
             };
           } else {
-            // Exécuter le tool avec le call original (pour les arguments)
+            // Exécuter le tool avec le call original
             toolResult = await executeTool(originalCall, userId);
           }
           
           const toolResponse = {
             role: "tool",
-            tool_call_id: toolCallId, // ID du normalized call (garantit correspondance)
-            name: toolName,
+            tool_call_id: toolCallId, // ID EXACT du tool call (original ou normalisé)
+            name: toolName || "unknown",
             content: JSON.stringify(toolResult),
           };
           
           messages.push(toolResponse);
-          console.log(`[Coach API] Tool response ajoutée:`, {
+          console.log(`[Coach API] Tool response ${i + 1}/${toolCalls.length} ajoutée:`, {
             tool_call_id: toolCallId,
-            name: toolName,
+            name: toolName || "unknown",
             success: toolResult.success !== false,
           });
         }
