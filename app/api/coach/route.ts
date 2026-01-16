@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMistralClient, DEFAULT_MODEL } from "@/lib/mistral/client";
 import { COACH_SYSTEM_PROMPT } from "@/lib/mistral/prompts";
+import { COACH_TOOLS } from "@/lib/mistral/tools";
 import {
   queryDocuments,
   getDocument,
+  createDocument,
+  updateDocument,
   where,
   orderBy,
   limit,
 } from "@/lib/firebase/firestore";
+import { parseISO, format, addDays, startOfDay } from "date-fns";
 
 export async function POST(request: NextRequest) {
   try {
@@ -83,30 +87,96 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Appel Mistral
+    // Appel Mistral avec tool calling
     const mistral = getMistralClient();
+    const messages: any[] = [
+      {
+        role: "system",
+        content: COACH_SYSTEM_PROMPT + (contextText ? `\n\n${contextText}` : ""),
+      },
+      {
+        role: "user",
+        content: message,
+      },
+    ];
 
-    const response = await mistral.chat.complete({
-      model: DEFAULT_MODEL,
-      messages: [
-        {
-          role: "system",
-          content: COACH_SYSTEM_PROMPT + (contextText ? `\n\n${contextText}` : ""),
-        },
-        {
-          role: "user",
-          content: message,
-        },
-      ],
-      temperature: 0.7,
-      maxTokens: 1000,
-    });
+    let finalResponse = "";
+    let maxIterations = 5; // Limiter les itérations pour éviter les boucles infinies
+    let iteration = 0;
 
-    const assistantMessage =
-      response.choices?.[0]?.message?.content || "Désolé, je n'ai pas pu générer de réponse.";
+    while (iteration < maxIterations) {
+      const response = await mistral.chat.complete({
+        model: DEFAULT_MODEL,
+        messages,
+        tools: COACH_TOOLS,
+        temperature: 0.7,
+        maxTokens: 1000,
+      });
+
+      const choice = response.choices?.[0];
+      if (!choice) break;
+
+      const assistantMessage = choice.message;
+
+      // Si l'IA veut utiliser un tool
+      if (assistantMessage.toolCalls && assistantMessage.toolCalls.length > 0) {
+        // Ajouter le message de l'assistant avec tool calls
+        messages.push({
+          role: "assistant",
+          content: assistantMessage.content || null,
+          toolCalls: assistantMessage.toolCalls,
+        });
+
+        // Exécuter chaque tool call
+        for (const toolCall of assistantMessage.toolCalls) {
+          const toolName = toolCall.function.name;
+          const toolArgs = JSON.parse(toolCall.function.arguments);
+
+          let toolResult: any;
+
+          try {
+            switch (toolName) {
+              case "getCalendarEvents":
+                toolResult = await handleGetCalendarEvents(userId, toolArgs);
+                break;
+              case "createEvent":
+                toolResult = await handleCreateEvent(userId, toolArgs);
+                break;
+              case "updateEvent":
+                toolResult = await handleUpdateEvent(userId, toolArgs);
+                break;
+              default:
+                toolResult = { error: `Tool inconnu: ${toolName}` };
+            }
+          } catch (error: any) {
+            toolResult = { error: error.message || "Erreur lors de l'exécution" };
+          }
+
+          // Ajouter le résultat du tool
+          messages.push({
+            role: "tool",
+            content: JSON.stringify(toolResult),
+            name: toolName,
+            toolCallId: toolCall.id,
+          });
+        }
+
+        iteration++;
+        continue;
+      }
+
+      // Pas de tool call, récupérer la réponse finale
+      finalResponse =
+        assistantMessage.content || "Désolé, je n'ai pas pu générer de réponse.";
+      break;
+    }
+
+    if (!finalResponse && iteration >= maxIterations) {
+      finalResponse = "J'ai rencontré un problème lors du traitement. Pouvez-vous reformuler votre demande ?";
+    }
 
     return NextResponse.json({
-      message: assistantMessage,
+      message: finalResponse,
       model: DEFAULT_MODEL,
     });
   } catch (error: any) {
@@ -128,5 +198,176 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+// Handlers pour les tools
+
+async function handleGetCalendarEvents(
+  userId: string,
+  args: { startDate?: string; endDate?: string }
+) {
+  try {
+    const start = args.startDate
+      ? startOfDay(parseISO(args.startDate))
+      : startOfDay(new Date());
+    const end = args.endDate
+      ? startOfDay(parseISO(args.endDate))
+      : startOfDay(addDays(new Date(), 7));
+
+    // Récupérer tous les événements de l'utilisateur et filtrer côté serveur
+    const allEvents = await queryDocuments("calendarEvents", [
+      where("userId", "==", userId),
+      orderBy("start", "asc"),
+    ]);
+
+    // Filtrer par date
+    const events = allEvents.filter((e: any) => {
+      const eventDate = parseISO(e.start);
+      return eventDate >= start && eventDate <= end;
+    });
+
+    return {
+      success: true,
+      events: events.map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        sport: e.sport,
+        date: format(parseISO(e.start), "yyyy-MM-dd"),
+        time: e.isAllDay ? null : format(parseISO(e.start), "HH:mm"),
+        duration: e.duration,
+        status: e.status,
+      })),
+      count: events.length,
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+async function handleCreateEvent(
+  userId: string,
+  args: {
+    title: string;
+    sport?: string;
+    date: string;
+    time?: string;
+    duration?: number;
+    notes?: string;
+  }
+) {
+  try {
+    const eventId = `${userId}_${Date.now()}`;
+    const dateObj = parseISO(args.date);
+
+    let startDate: string;
+    let endDate: string;
+
+    if (args.time) {
+      // Événement avec heure précise
+      const [hours, minutes] = args.time.split(":").map(Number);
+      dateObj.setHours(hours, minutes, 0, 0);
+      startDate = dateObj.toISOString();
+
+      const duration = args.duration || 60;
+      const endDateObj = new Date(dateObj);
+      endDateObj.setMinutes(endDateObj.getMinutes() + duration);
+      endDate = endDateObj.toISOString();
+    } else {
+      // Événement toute la journée
+      const dayStart = startOfDay(dateObj);
+      startDate = dayStart.toISOString();
+      endDate = dayStart.toISOString();
+    }
+
+    const eventData = {
+      userId,
+      title: args.title,
+      sport: args.sport || "",
+      duration: args.duration || 60,
+      start: startDate,
+      end: endDate,
+      isAllDay: !args.time,
+      status: "planned" as const,
+      notes: args.notes || "",
+    };
+
+    await createDocument("calendarEvents", eventId, eventData);
+
+    return {
+      success: true,
+      message: `Événement "${args.title}" créé avec succès`,
+      eventId,
+      date: format(parseISO(startDate), "dd/MM/yyyy"),
+      time: args.time || "Toute la journée",
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+async function handleUpdateEvent(
+  userId: string,
+  args: {
+    eventId: string;
+    title?: string;
+    date?: string;
+    time?: string;
+    duration?: number;
+  }
+) {
+  try {
+    // Vérifier que l'événement existe et appartient à l'utilisateur
+    const event = await getDocument("calendarEvents", args.eventId);
+    if (!event || (event as any).userId !== userId) {
+      return { success: false, error: "Événement non trouvé" };
+    }
+
+    const updateData: any = {};
+
+    if (args.title) updateData.title = args.title;
+    if (args.duration) updateData.duration = args.duration;
+
+    // Si date ou heure changent, recalculer start/end
+    if (args.date || args.time) {
+      const oldStart = parseISO((event as any).start);
+      const newDate = args.date ? parseISO(args.date) : oldStart;
+
+      if (args.time) {
+        const [hours, minutes] = args.time.split(":").map(Number);
+        newDate.setHours(hours, minutes, 0, 0);
+        updateData.start = newDate.toISOString();
+        updateData.isAllDay = false;
+
+        const duration = args.duration || (event as any).duration || 60;
+        const endDate = new Date(newDate);
+        endDate.setMinutes(endDate.getMinutes() + duration);
+        updateData.end = endDate.toISOString();
+      } else if (args.date) {
+        // Changement de date seulement, préserver l'heure
+        const oldTime = new Date(oldStart);
+        newDate.setHours(
+          oldTime.getHours(),
+          oldTime.getMinutes(),
+          oldTime.getSeconds()
+        );
+        updateData.start = newDate.toISOString();
+
+        const duration = args.duration || (event as any).duration || 60;
+        const endDate = new Date(newDate);
+        endDate.setMinutes(endDate.getMinutes() + duration);
+        updateData.end = endDate.toISOString();
+      }
+    }
+
+    await updateDocument("calendarEvents", args.eventId, updateData);
+
+    return {
+      success: true,
+      message: "Événement modifié avec succès",
+      eventId: args.eventId,
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
