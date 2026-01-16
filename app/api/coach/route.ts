@@ -168,8 +168,17 @@ export async function POST(request: NextRequest) {
       }
 
       // Pas de tool call, récupérer la réponse finale
+      const content = assistantMessage.content;
       finalResponse =
-        assistantMessage.content || "Désolé, je n'ai pas pu générer de réponse.";
+        typeof content === "string"
+          ? content
+          : Array.isArray(content)
+            ? content
+                .map((chunk: any) =>
+                  typeof chunk === "string" ? chunk : chunk.text || ""
+                )
+                .join("")
+            : "Désolé, je n'ai pas pu générer de réponse.";
       break;
     }
 
