@@ -286,13 +286,27 @@ export async function POST(request: NextRequest) {
       model: DEFAULT_MODEL,
     });
   } catch (error: any) {
-    console.error("Erreur API Coach:", error);
+    // Logging détaillé pour debugging
+    console.error("=== ERREUR API COACH ===");
+    console.error("Message:", error.message);
+    console.error("Stack:", error.stack);
+    console.error("Name:", error.name);
+    console.error("Type:", typeof error);
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response data:", error.response.data);
+    }
+    console.error("========================");
     
     // Message d'erreur plus spécifique selon le type d'erreur
     let errorMessage = "Erreur lors de la communication avec le coach IA";
     
     if (error.message?.includes("MISTRAL_API_KEY")) {
       errorMessage = "Configuration manquante : la clé API Mistral n'est pas configurée";
+    } else if (error.message?.includes("401") || error.message?.includes("Unauthorized")) {
+      errorMessage = "Clé API Mistral invalide ou expirée";
+    } else if (error.message?.includes("429") || error.message?.includes("rate limit")) {
+      errorMessage = "Limite de requêtes atteinte, veuillez réessayer plus tard";
     } else if (error.message) {
       errorMessage = `Erreur : ${error.message}`;
     }
