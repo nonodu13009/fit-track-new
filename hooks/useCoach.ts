@@ -44,7 +44,11 @@ export function useCoach() {
         });
 
         if (!response.ok) {
-          throw new Error("Erreur lors de la communication avec le coach");
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage =
+            errorData.error ||
+            `Erreur ${response.status}: ${response.statusText}`;
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
