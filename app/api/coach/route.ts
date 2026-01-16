@@ -236,19 +236,52 @@ export async function POST(request: NextRequest) {
           });
 
           // Ajouter le message de l'assistant avec tool calls
-          messages.push({
+          // ⚠️ IMPORTANT : Mistral exige que si tool_calls est présent, content doit être null
+          const assistantMessageWithTools: any = {
             role: "assistant",
-            content: assistantMessage.content || null,
             tool_calls: toolCalls,
-          });
+          };
+          // Ne pas inclure content si tool_calls est présent (selon docs Mistral)
+          if (!assistantMessage.content || assistantMessage.content.trim() === "") {
+            assistantMessageWithTools.content = null;
+          } else {
+            // Si content existe, on peut le garder mais c'est mieux de le mettre à null
+            assistantMessageWithTools.content = null;
+          }
+          messages.push(assistantMessageWithTools);
 
           // Compteur pour vérifier que chaque tool call reçoit une réponse
           let toolResponsesCount = 0;
 
+          // Fonction pour générer un ID de 9 caractères (requis par Mistral)
+          const generateToolCallId = (): string => {
+            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            let result = "";
+            for (let i = 0; i < 9; i++) {
+              result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+          };
+
           // Exécuter chaque tool call
           for (const toolCall of toolCalls) {
             const toolName = toolCall.function?.name || "unknown";
-            const toolCallId = toolCall.id || toolCall.tool_call_id || `fallback_${Date.now()}_${Math.random()}`;
+            // Mistral exige que les IDs soient exactement 9 caractères
+            let toolCallId = toolCall.id || toolCall.tool_call_id;
+            
+            // Vérifier et corriger la longueur de l'ID si nécessaire
+            if (!toolCallId || toolCallId.length !== 9) {
+              if (toolCallId && toolCallId.length > 9) {
+                // Tronquer à 9 caractères si trop long
+                toolCallId = toolCallId.substring(0, 9);
+              } else {
+                // Générer un nouvel ID de 9 caractères si manquant ou trop court
+                toolCallId = generateToolCallId();
+                console.warn(
+                  `[Coach API] Tool call ID invalide, génération d'un nouvel ID: ${toolCallId}`
+                );
+              }
+            }
             
             try {
               if (!toolCall.function?.name) {
@@ -313,26 +346,8 @@ export async function POST(request: NextRequest) {
               // Ajouter le résultat du tool (utiliser tool_call_id avec underscore)
               // Le SDK Mistral attend tool_call_id (avec underscore)
               // ⚠️ CRITIQUE : Vérifier que toolCallId n'est pas vide
-              if (!toolCallId) {
-                console.error(`[Coach API] Tool call sans ID pour ${toolName}:`, toolCall);
-                // Générer un ID de fallback si manquant
-                const fallbackId = `fallback_${Date.now()}_${Math.random()}`;
-                const errorResponse = {
-                  role: "tool",
-                  content: JSON.stringify({
-                    success: false,
-                    error: "Tool call invalide : ID manquant",
-                  }),
-                  tool_call_id: fallbackId,
-                  name: toolName,
-                };
-                messages.push(errorResponse);
-                toolResponsesCount++;
-                console.log(
-                  `[Coach API] Tool response envoyée (fallback ID):`,
-                  { tool_call_id: fallbackId, name: toolName, success: false }
-                );
-              } else {
+              // L'ID a déjà été validé et corrigé plus haut, on peut l'utiliser directement
+              {
                 const toolMessage: any = {
                   role: "tool",
                   content: JSON.stringify(toolResult),
@@ -358,8 +373,7 @@ export async function POST(request: NextRequest) {
             } catch (toolError: any) {
               console.error(`[Coach API] Erreur lors de l'exécution du tool ${toolName}:`, toolError);
               // ⚠️ CRITIQUE : Toujours envoyer une réponse, même en cas d'erreur
-              // Vérifier que toolCallId n'est pas vide
-              const errorToolCallId = toolCallId || `error_${Date.now()}_${Math.random()}`;
+              // L'ID a déjà été validé et corrigé plus haut
               const errorResponse = {
                 role: "tool",
                 content: JSON.stringify({
@@ -367,13 +381,13 @@ export async function POST(request: NextRequest) {
                   error: toolError.message || "Erreur lors de l'exécution",
                 }),
                 name: toolName,
-                tool_call_id: errorToolCallId,
+                tool_call_id: toolCallId, // Déjà validé à 9 caractères
               };
               messages.push(errorResponse);
               toolResponsesCount++;
               console.log(
                 `[Coach API] Tool response d'erreur envoyée:`,
-                { tool_call_id: errorToolCallId, name: toolName, error: toolError.message }
+                { tool_call_id: toolCallId, name: toolName, error: toolError.message }
               );
             }
           }
