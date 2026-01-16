@@ -118,17 +118,19 @@ export async function POST(request: NextRequest) {
 
       const assistantMessage = choice.message;
 
-      // Si l'IA veut utiliser un tool
-      if (assistantMessage.toolCalls && assistantMessage.toolCalls.length > 0) {
+      // Si l'IA veut utiliser un tool (vérifier tool_calls avec underscore)
+      const toolCalls = (assistantMessage as any).tool_calls || (assistantMessage as any).toolCalls;
+      
+      if (toolCalls && toolCalls.length > 0) {
         // Ajouter le message de l'assistant avec tool calls
         messages.push({
           role: "assistant",
           content: assistantMessage.content || null,
-          toolCalls: assistantMessage.toolCalls,
+          tool_calls: toolCalls,
         });
 
         // Exécuter chaque tool call
-        for (const toolCall of assistantMessage.toolCalls) {
+        for (const toolCall of toolCalls) {
           const toolName = toolCall.function.name;
           const toolArgs = JSON.parse(toolCall.function.arguments);
 
@@ -152,12 +154,12 @@ export async function POST(request: NextRequest) {
             toolResult = { error: error.message || "Erreur lors de l'exécution" };
           }
 
-          // Ajouter le résultat du tool
+          // Ajouter le résultat du tool (utiliser tool_call_id avec underscore)
           messages.push({
             role: "tool",
             content: JSON.stringify(toolResult),
             name: toolName,
-            toolCallId: toolCall.id,
+            tool_call_id: toolCall.id,
           });
         }
 
