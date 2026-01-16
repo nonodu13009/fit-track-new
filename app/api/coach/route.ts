@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Appel Mistral avec tool calling
+    // Appel Mistral avec tool calling - Approche simple en 2 étapes
     const mistral = getMistralClient();
     let messages: any[] = [
       {
@@ -180,595 +180,100 @@ export async function POST(request: NextRequest) {
       },
     ];
 
-    let finalResponse = "";
-    let maxIterations = 5; // Limiter les itérations pour éviter les boucles infinies
-    let iteration = 0;
-
     // Tool calling activé : permet au coach de mettre à jour l'agenda
     const ENABLE_TOOL_CALLING = true;
-    
-    while (iteration < maxIterations) {
-      try {
-        // ========================================
-        // VALIDATION DES MESSAGES (selon support Mistral)
-        // ========================================
-        
-        // 1. Vérifier qu'il n'y a pas de tool calls non résolus dans les messages précédents
-        const previousToolCalls = messages
-          .filter((m: any) => m.role === "assistant" && m.tool_calls)
-          .flatMap((m: any) => m.tool_calls || [])
-          .map((tc: any) => tc.id || tc.tool_call_id);
-        
-        const previousToolResponses = messages
-          .filter((m: any) => m.role === "tool")
-          .map((m: any) => m.tool_call_id);
-        
-        const unresolvedToolCalls = previousToolCalls.filter(
-          (id) => !previousToolResponses.includes(id)
-        );
-        
-        if (unresolvedToolCalls.length > 0) {
-          console.error(
-            `[Coach API] ⚠️ ${unresolvedToolCalls.length} tool call(s) non résolu(s) détecté(s) dans les messages précédents:`,
-            unresolvedToolCalls
-          );
-          // Nettoyer les messages en supprimant les tool calls non résolus
-          // (ou arrêter avec une erreur)
-          return NextResponse.json(
-            {
-              error: "Erreur : des tool calls précédents n'ont pas été résolus. Veuillez réessayer.",
-            },
-            { status: 500 }
-          );
-        }
-        
-        // 2. Vérifier les doublons dans l'array messages
-        const messageIds = new Set<string>();
-        const duplicateMessages: number[] = [];
-        messages.forEach((msg: any, index: number) => {
-          // Créer un identifiant unique pour chaque message
-          const msgId = JSON.stringify({
-            role: msg.role,
-            content: msg.content,
-            tool_call_id: msg.tool_call_id,
-            tool_calls: msg.tool_calls,
-          });
-          if (messageIds.has(msgId)) {
-            duplicateMessages.push(index);
-          } else {
-            messageIds.add(msgId);
-          }
-        });
-        
-        if (duplicateMessages.length > 0) {
-          console.error(
-            `[Coach API] ⚠️ ${duplicateMessages.length} message(s) en double détecté(s) aux indices:`,
-            duplicateMessages
-          );
-          // Supprimer les doublons (garder la première occurrence)
-          const uniqueMessages: any[] = [];
-          const seenIds = new Set<string>();
-          messages.forEach((msg: any) => {
-            const msgId = JSON.stringify({
-              role: msg.role,
-              content: msg.content,
-              tool_call_id: msg.tool_call_id,
-              tool_calls: msg.tool_calls,
-            });
-            if (!seenIds.has(msgId)) {
-              seenIds.add(msgId);
-              uniqueMessages.push(msg);
-            }
-          });
-          messages = uniqueMessages;
-          console.log(
-            `[Coach API] Doublons supprimés: ${messages.length} messages uniques`
-          );
-        }
-        
-        // 3. Vérifier l'ordre des messages (assistant → tool → assistant)
-        let lastAssistantWithTools = -1;
-        for (let i = 0; i < messages.length; i++) {
-          const msg = messages[i] as any;
-          if (msg.role === "assistant" && msg.tool_calls) {
-            lastAssistantWithTools = i;
-            // Vérifier que les messages suivants sont des tool responses
-            let toolResponseCount = 0;
-            for (let j = i + 1; j < messages.length; j++) {
-              const nextMsg = messages[j] as any;
-              if (nextMsg.role === "tool") {
-                toolResponseCount++;
-              } else if (nextMsg.role === "assistant") {
-                // On a atteint le prochain assistant, vérifier qu'on a toutes les réponses
-                const expectedToolCalls = (msg.tool_calls || []).length;
-                if (toolResponseCount !== expectedToolCalls) {
-                  console.error(
-                    `[Coach API] ⚠️ Ordre incorrect: assistant avec ${expectedToolCalls} tool calls suivi de ${toolResponseCount} tool responses à l'indice ${i}`
-                  );
-                }
-                break;
-              }
-            }
-          }
-        }
-        
-        // 4. Log complet de l'array messages AVANT l'envoi à Mistral
-        console.log(
-          `[Coach API] === ARRAY MESSAGES AVANT ENVOI (itération ${iteration + 1}) ===`
-        );
-        console.log(
-          `[Coach API] Nombre total de messages: ${messages.length}`
-        );
-        messages.forEach((msg: any, idx: number) => {
-          console.log(
-            `[Coach API] Message ${idx + 1}/${messages.length}:`,
-            {
-              role: msg.role,
-              hasContent: !!msg.content,
-              contentPreview: msg.content
-                ? (typeof msg.content === "string"
-                    ? msg.content.substring(0, 100)
-                    : "[array]")
-                : null,
-              hasToolCalls: !!(msg.tool_calls && msg.tool_calls.length > 0),
-              toolCallsCount: msg.tool_calls?.length || 0,
-              toolCallIds: msg.tool_calls?.map((tc: any) => tc.id) || [],
-              tool_call_id: msg.tool_call_id || null,
-              name: msg.name || null,
-            }
-          );
-        });
-        console.log(
-          `[Coach API] === FIN ARRAY MESSAGES ===`
-        );
-        
-        // Vérifier si c'est la première itération et si on doit utiliser les tools
-        const useTools = ENABLE_TOOL_CALLING && iteration === 0 ? COACH_TOOLS : undefined;
-        
-        const requestOptions: any = {
+
+    try {
+        // PREMIER APPEL : avec tools disponibles
+      const firstResponse = await retryWithBackoff(
+        () => mistral.chat.complete({
           model: DEFAULT_MODEL,
           messages,
+          tools: ENABLE_TOOL_CALLING ? COACH_TOOLS : undefined,
           temperature: 0.7,
           maxTokens: 1000,
-        };
-        
-        if (useTools) {
-          requestOptions.tools = useTools;
+        }),
+        3,
+        1000
+      );
+
+      const assistantMessage = firstResponse.choices?.[0]?.message;
+      if (!assistantMessage) {
+        return NextResponse.json({ error: "Pas de réponse du modèle" }, { status: 500 });
+      }
+
+      // Vérifier si tool calls présents
+      const toolCalls = assistantMessage.tool_calls || assistantMessage.toolCalls;
+      
+      if (toolCalls && toolCalls.length > 0) {
+        // Ajouter message assistant avec tool_calls normalisés
+        messages.push({
+          role: "assistant",
+          tool_calls: toolCalls.map((tc: any) => ({
+            id: tc.id,
+            type: "function",
+            function: {
+              name: tc.function?.name,
+              arguments: tc.function?.arguments || "{}",
+            },
+          })),
+          content: null,
+        });
+
+        // Exécuter chaque tool et ajouter réponse
+        for (const toolCall of toolCalls) {
+          const toolResult = await executeTool(toolCall, userId);
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            name: toolCall.function?.name,
+            content: JSON.stringify(toolResult),
+          });
         }
-        
-        // Appel Mistral avec retry automatique pour erreurs temporaires (429, 500)
-        const response = await retryWithBackoff(
-          () => mistral.chat.complete(requestOptions),
-          3, // maxRetries
-          1000 // baseDelay (1 seconde)
+
+        // DEUXIÈME APPEL : avec tool responses
+        const finalResponse = await retryWithBackoff(
+          () => mistral.chat.complete({
+            model: DEFAULT_MODEL,
+            messages,
+            temperature: 0.7,
+            maxTokens: 1000,
+          }),
+          3,
+          1000
         );
 
-        const choice = response.choices?.[0];
-        if (!choice) {
-          finalResponse = "Désolé, je n'ai pas reçu de réponse du modèle.";
-          break;
+        const finalMessage = finalResponse.choices?.[0]?.message;
+        if (!finalMessage) {
+          return NextResponse.json({ error: "Pas de réponse finale du modèle" }, { status: 500 });
         }
 
-        const assistantMessage = choice.message;
+        const content = finalMessage.content;
+        const responseText = typeof content === "string"
+          ? content
+          : Array.isArray(content)
+            ? content.map((c: any) => typeof c === "string" ? c : c.text || "").join("")
+            : "";
 
-        // Si l'IA veut utiliser un tool (vérifier tool_calls avec underscore)
-        const toolCalls = (assistantMessage as any).tool_calls || (assistantMessage as any).toolCalls;
-        
-        if (toolCalls && toolCalls.length > 0) {
-          // Logging détaillé des tool calls reçus (format exact)
-          console.log(`[Coach API] Itération ${iteration + 1}: ${toolCalls.length} tool call(s) reçu(s)`);
-          console.log(`[Coach API] Format exact tool_calls reçu:`, JSON.stringify(toolCalls, null, 2));
-          toolCalls.forEach((tc: any, index: number) => {
-            const originalId = tc.id || tc.tool_call_id;
-            console.log(
-              `[Coach API] Tool call ${index + 1}/${toolCalls.length}:`,
-              {
-                id: originalId || "MISSING",
-                idLength: originalId ? originalId.length : 0,
-                name: tc.function?.name || "unknown",
-                hasArguments: !!tc.function?.arguments,
-                fullToolCall: JSON.stringify(tc),
-              }
-            );
-          });
-
-          // Normaliser les tool calls pour s'assurer qu'ils ont le format correct
-          // ⚠️ CRITIQUE : Mistral exige "type": "function" pour chaque tool call
-          const normalizedToolCalls = toolCalls.map((tc: any) => ({
-            id: tc.id || tc.tool_call_id, // Préserver l'ID original
-            type: "function", // ⚠️ REQUIS selon support Mistral
-            function: {
-              name: tc.function?.name || tc.name,
-              arguments: tc.function?.arguments || tc.arguments || "{}",
-            },
-          }));
-
-          // Ajouter le message de l'assistant avec tool calls normalisés
-          // ⚠️ IMPORTANT : Mistral exige que si tool_calls est présent, content doit être null
-          const assistantMessageWithTools: any = {
-            role: "assistant",
-            tool_calls: normalizedToolCalls,
-            content: null, // Toujours null quand tool_calls est présent (selon docs Mistral)
-          };
-          messages.push(assistantMessageWithTools);
-          
-          // Logger le format normalisé pour vérification
-          console.log(
-            `[Coach API] Tool calls normalisés avec type="function":`,
-            JSON.stringify(normalizedToolCalls, null, 2)
-          );
-
-          // Validation stricte : vérifier que tous les tool calls ont un ID
-          const toolCallsWithoutId = toolCalls.filter(
-            (tc: any) => !tc.id && !tc.tool_call_id
-          );
-          if (toolCallsWithoutId.length > 0) {
-            console.error(
-              `[Coach API] ⚠️ ${toolCallsWithoutId.length} tool call(s) sans ID détecté(s)`,
-              toolCallsWithoutId
-            );
-          }
-
-          // Compteur pour vérifier que chaque tool call reçoit une réponse
-          let toolResponsesCount = 0;
-
-          // Fonction pour générer un ID unique (seulement si vraiment manquant)
-          const generateToolCallId = (): string => {
-            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            let result = "";
-            // Générer un ID de longueur variable (12 caractères pour être sûr)
-            for (let i = 0; i < 12; i++) {
-              result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
-          };
-
-          // Exécuter chaque tool call
-          // ⚠️ CRITIQUE : S'assurer que chaque tool call reçoit exactement une réponse
-          // ⚠️ IMPORTANT : Préserver l'ordre des tool calls (les réponses doivent être dans le même ordre)
-          // Créer un array pour stocker les réponses dans l'ordre
-          const toolResponses: any[] = [];
-          
-          for (const toolCall of toolCalls) {
-            const toolName = toolCall.function?.name || "unknown";
-            
-            // ⚠️ CRITIQUE : Préserver l'ID original de Mistral tel quel
-            // Mistral utilise 'id' dans tool_calls et 'tool_call_id' dans tool responses
-            // Ne pas le modifier/tronquer car Mistral doit pouvoir faire la correspondance
-            // Dans tool_calls, c'est toujours 'id', pas 'tool_call_id'
-            const toolCallIdFromCall = toolCall.id; // C'est le champ utilisé dans tool_calls
-            let toolCallId = toolCallIdFromCall || toolCall.tool_call_id; // Fallback si format inattendu
-            const originalId = toolCallId;
-            
-            // Logger l'ID original pour debugging
-            if (originalId) {
-              console.log(
-                `[Coach API] Tool call ID original préservé: "${originalId}" (longueur: ${originalId.length})`
-              );
-            } else {
-              // Générer un ID seulement si vraiment manquant (cas exceptionnel)
-              toolCallId = generateToolCallId();
-              console.error(
-                `[Coach API] ⚠️ Tool call sans ID, génération d'un ID de fallback: ${toolCallId}`,
-                { toolCall: JSON.stringify(toolCall) }
-              );
-            }
-            
-            try {
-              if (!toolCall.function?.name) {
-                console.error("Tool call sans nom:", toolCall);
-                // ⚠️ CRITIQUE : Toujours envoyer une réponse, même pour un tool call invalide
-                // Sinon Mistral génère l'erreur 3230 "Not the same number of function calls and responses"
-                const invalidResponse = {
-                  role: "tool",
-                  content: JSON.stringify({
-                    success: false,
-                    error: "Tool call invalide : nom de fonction manquant",
-                  }),
-                  tool_call_id: toolCallId,
-                  name: "unknown",
-                };
-                // Ajouter à toolResponses pour préserver l'ordre
-                toolResponses.push(invalidResponse);
-                toolResponsesCount++;
-                console.log(
-                  `[Coach API] Tool response construite (nom manquant, ordre préservé):`,
-                  {
-                    tool_call_id: toolCallId,
-                    original_id: originalId,
-                    name: "unknown",
-                    success: false,
-                    responseFormat: JSON.stringify(invalidResponse),
-                    order: toolResponses.length,
-                  }
-                );
-                continue;
-              }
-
-              let toolArgs: any = {};
-              try {
-                const argsString = toolCall.function?.arguments;
-                if (argsString) {
-                  toolArgs = typeof argsString === "string" ? JSON.parse(argsString) : argsString;
-                }
-                // Logging des arguments parsés
-                console.log(`[Coach API] Arguments parsés pour ${toolName}:`, toolArgs);
-              } catch (parseError) {
-                console.error(
-                  `[Coach API] Erreur parsing arguments pour ${toolName}:`,
-                  parseError,
-                  toolCall.function?.arguments
-                );
-                toolArgs = {};
-              }
-
-              let toolResult: any;
-
-              try {
-                switch (toolName) {
-                  case "getCalendarEvents":
-                    toolResult = await handleGetCalendarEvents(userId, toolArgs);
-                    break;
-                  case "createEvent":
-                    toolResult = await handleCreateEvent(userId, toolArgs);
-                    break;
-                  case "updateEvent":
-                    toolResult = await handleUpdateEvent(userId, toolArgs);
-                    break;
-                  default:
-                    toolResult = { error: `Tool inconnu: ${toolName}` };
-                }
-              } catch (error: any) {
-                toolResult = { error: error.message || "Erreur lors de l'exécution" };
-              }
-
-              // Construire le message tool (ne pas l'ajouter immédiatement pour préserver l'ordre)
-              // Le SDK Mistral attend tool_call_id (avec underscore)
-              // ⚠️ CRITIQUE : Vérifier que toolCallId n'est pas vide
-              // L'ID a déjà été validé et corrigé plus haut, on peut l'utiliser directement
-              const toolMessage: any = {
-                role: "tool",
-                content: JSON.stringify(toolResult),
-                tool_call_id: toolCallId,
-              };
-              // Ajouter name (recommandé par support Mistral pour la clarté)
-              if (toolName && toolName !== "unknown") {
-                toolMessage.name = toolName;
-              }
-              
-              // Stocker la réponse dans l'array (ordre préservé)
-              toolResponses.push(toolMessage);
-              toolResponsesCount++;
-              
-              // Logging détaillé de la réponse construite
-              console.log(
-                `[Coach API] Tool response construite (ordre préservé):`,
-                {
-                  tool_call_id: toolCallId,
-                  original_id: originalId,
-                  id_match: toolCallId === originalId,
-                  name: toolName,
-                  success: toolResult.success !== false,
-                  hasError: toolResult.error !== undefined,
-                  responseFormat: JSON.stringify(toolMessage),
-                  order: toolResponses.length,
-                }
-              );
-            } catch (toolError: any) {
-              console.error(`[Coach API] Erreur lors de l'exécution du tool ${toolName}:`, toolError);
-              // ⚠️ CRITIQUE : Toujours envoyer une réponse, même en cas d'erreur
-              // L'ID a déjà été validé et corrigé plus haut
-              const errorResponse = {
-                role: "tool",
-                content: JSON.stringify({
-                  success: false,
-                  error: toolError.message || "Erreur lors de l'exécution",
-                }),
-                name: toolName,
-                tool_call_id: toolCallId, // ID original préservé ou généré si manquant
-              };
-              // Ajouter à toolResponses pour préserver l'ordre
-              toolResponses.push(errorResponse);
-              toolResponsesCount++;
-              console.log(
-                `[Coach API] Tool response d'erreur construite (ordre préservé):`,
-                {
-                  tool_call_id: toolCallId,
-                  original_id: originalId,
-                  id_match: toolCallId === originalId,
-                  name: toolName,
-                  error: toolError.message,
-                  responseFormat: JSON.stringify(errorResponse),
-                  order: toolResponses.length,
-                }
-              );
-            }
-          }
-          
-          // ⚠️ CRITIQUE : Ajouter toutes les réponses dans l'ordre exact des tool calls
-          // (selon support Mistral : les réponses doivent être dans le même ordre que les calls)
-          toolResponses.forEach((toolResponse, idx) => {
-            messages.push(toolResponse);
-            console.log(
-              `[Coach API] Tool response ${idx + 1}/${toolResponses.length} ajoutée aux messages (ordre préservé)`
-            );
-          });
-          
-          // Vérifier que l'ordre est correct
-          const lastAssistantIndex = messages.length - toolResponses.length - 1;
-          const lastAssistant = messages[lastAssistantIndex] as any;
-          if (lastAssistant?.tool_calls) {
-            const toolCallIds = lastAssistant.tool_calls.map((tc: any) => tc.id);
-            const toolResponseIds = toolResponses.map((tr: any) => tr.tool_call_id);
-            const orderMatches = toolCallIds.every((id: string | undefined, idx: number) => id === toolResponseIds[idx]);
-            if (!orderMatches) {
-              console.error(
-                `[Coach API] ⚠️ Ordre des tool responses ne correspond pas aux tool calls:`,
-                {
-                  toolCallIds,
-                  toolResponseIds,
-                  matches: toolCallIds.map((id: string | undefined, idx: number) => id === toolResponseIds[idx]),
-                }
-              );
-            } else {
-              console.log(
-                `[Coach API] ✅ Ordre des tool responses correspond exactement aux tool calls`
-              );
-            }
-          }
-
-          // Vérifier que le nombre de réponses correspond au nombre de tool calls
-          if (toolResponsesCount !== toolCalls.length) {
-            console.error(
-              `[Coach API] ⚠️ MISMATCH CRITIQUE: ${toolCalls.length} tool call(s) reçu(s) mais ${toolResponsesCount} réponse(s) envoyée(s)`
-            );
-            console.error(
-              `[Coach API] Détails des tool calls reçus:`,
-              toolCalls.map((tc: any, idx: number) => ({
-                index: idx,
-                id: tc.id || "MISSING",
-                tool_call_id: tc.tool_call_id || "N/A",
-                name: tc.function?.name || "unknown",
-                fullToolCall: JSON.stringify(tc),
-              }))
-            );
-            const lastToolMessages = messages
-              .filter((m: any) => m.role === "tool")
-              .slice(-toolResponsesCount);
-            console.error(
-              `[Coach API] Dernières réponses envoyées:`,
-              lastToolMessages.map((m: any, idx: number) => ({
-                index: idx,
-                tool_call_id: m.tool_call_id,
-                name: m.name,
-                fullResponse: JSON.stringify(m),
-              }))
-            );
-            // Comparer les IDs pour trouver le mismatch
-            const receivedIds = toolCalls.map((tc: any) => tc.id || tc.tool_call_id || "MISSING");
-            const sentIds = lastToolMessages.map((m: any) => m.tool_call_id || "MISSING");
-            console.error(
-              `[Coach API] Comparaison IDs:`,
-              {
-                received: receivedIds,
-                sent: sentIds,
-                match: receivedIds.map((id: string, idx: number) => ({
-                  received: id,
-                  sent: sentIds[idx],
-                  matches: id === sentIds[idx],
-                })),
-              }
-            );
-          } else {
-            console.log(
-              `[Coach API] ✅ Tous les tool calls ont reçu une réponse (${toolResponsesCount}/${toolCalls.length})`
-            );
-            // Logger le format exact des messages qui seront envoyés à Mistral
-            const toolMessages = messages.filter((m: any) => m.role === "tool").slice(-toolResponsesCount);
-            const assistantMessage = messages.find((m: any) => m.role === "assistant" && m.tool_calls);
-            console.log(
-              `[Coach API] Format exact assistant message avec tool_calls:`,
-              JSON.stringify(assistantMessage, null, 2)
-            );
-            console.log(
-              `[Coach API] Format exact des tool responses:`,
-              JSON.stringify(toolMessages, null, 2)
-            );
-            // Vérifier la correspondance des IDs
-            const receivedIds = toolCalls.map((tc: any) => tc.id || "MISSING");
-            const sentIds = toolMessages.map((m: any) => m.tool_call_id || "MISSING");
-            const allMatch = receivedIds.every((id: string, idx: number) => id === sentIds[idx]);
-            if (!allMatch) {
-              console.error(
-                `[Coach API] ⚠️ IDs ne correspondent pas exactement:`,
-                {
-                  received: receivedIds,
-                  sent: sentIds,
-                  matches: receivedIds.map((id: string, idx: number) => id === sentIds[idx]),
-                }
-              );
-            } else {
-              console.log(`[Coach API] ✅ Tous les IDs correspondent exactement`);
-            }
-          }
-
-          iteration++;
-          continue;
-        }
-
-        // Pas de tool call, récupérer la réponse finale
+        return NextResponse.json({
+          message: responseText,
+          model: DEFAULT_MODEL,
+        });
+      } else {
+        // Pas de tool calls, retourner réponse directe
         const content = assistantMessage.content;
-        finalResponse =
-          typeof content === "string"
-            ? content
-            : Array.isArray(content)
-              ? content
-                  .map((chunk: any) =>
-                    typeof chunk === "string" ? chunk : chunk.text || ""
-                  )
-                  .join("")
-              : "Désolé, je n'ai pas pu générer de réponse.";
-        break;
-      } catch (iterationError: any) {
-        console.error(`Erreur lors de l'itération ${iteration}:`, iterationError);
-        console.error("Stack trace:", iterationError.stack);
-        console.error("Message d'erreur:", iterationError.message);
-        
-        // Si c'est la première itération et que l'erreur est liée aux tools, essayer sans tools
-        if (iteration === 0 && (iterationError.message?.includes("tool") || iterationError.message?.includes("function"))) {
-          console.log("[Coach API] Tentative sans tools en fallback...");
-          try {
-            const fallbackResponse = await retryWithBackoff(
-              () =>
-                mistral.chat.complete({
-                  model: DEFAULT_MODEL,
-                  messages: [
-                    {
-                      role: "system",
-                      content: COACH_SYSTEM_PROMPT + (contextText ? `\n\n${contextText}` : ""),
-                    },
-                    {
-                      role: "user",
-                      content: message,
-                    },
-                  ],
-                  temperature: 0.7,
-                  maxTokens: 1000,
-                }),
-              3, // maxRetries
-              1000 // baseDelay
-            );
-            const fallbackContent = fallbackResponse.choices?.[0]?.message?.content;
-            finalResponse =
-              typeof fallbackContent === "string"
-                ? fallbackContent
-                : Array.isArray(fallbackContent)
-                  ? fallbackContent
-                      .map((chunk: any) =>
-                        typeof chunk === "string" ? chunk : chunk.text || ""
-                      )
-                      .join("")
-                  : "Désolé, je n'ai pas pu générer de réponse.";
-            break;
-          } catch (fallbackError: any) {
-            console.error("Erreur fallback:", fallbackError);
-            throw fallbackError;
-          }
-        } else {
-          throw iterationError;
-        }
+        const responseText = typeof content === "string"
+          ? content
+          : Array.isArray(content)
+            ? content.map((c: any) => typeof c === "string" ? c : c.text || "").join("")
+            : "";
+
+        return NextResponse.json({
+          message: responseText,
+          model: DEFAULT_MODEL,
+        });
       }
-    }
-
-    if (!finalResponse && iteration >= maxIterations) {
-      finalResponse = "J'ai rencontré un problème lors du traitement. Pouvez-vous reformuler votre demande ?";
-    }
-
-    return NextResponse.json({
-      message: finalResponse,
-      model: DEFAULT_MODEL,
-    });
-  } catch (error: any) {
+    } catch (error: any) {
     // Logging détaillé pour debugging
     console.error("=== ERREUR API COACH ===");
     console.error("Message:", error.message);
@@ -801,6 +306,37 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+// Fonction simplifiée pour exécuter les tools
+async function executeTool(toolCall: any, userId: string): Promise<any> {
+  const toolName = toolCall.function?.name;
+  let toolArgs: any = {};
+
+  try {
+    const argsString = toolCall.function?.arguments;
+    if (argsString) {
+      toolArgs = typeof argsString === "string" ? JSON.parse(argsString) : argsString;
+    }
+  } catch (parseError) {
+    console.error(`[Coach API] Erreur parsing arguments pour ${toolName}:`, parseError);
+    return { success: false, error: "Arguments invalides" };
+  }
+
+  try {
+    switch (toolName) {
+      case "getCalendarEvents":
+        return await handleGetCalendarEvents(userId, toolArgs);
+      case "createEvent":
+        return await handleCreateEvent(userId, toolArgs);
+      case "updateEvent":
+        return await handleUpdateEvent(userId, toolArgs);
+      default:
+        return { success: false, error: `Tool inconnu: ${toolName}` };
+    }
+  } catch (error: any) {
+    return { success: false, error: error.message || "Erreur lors de l'exécution" };
   }
 }
 
