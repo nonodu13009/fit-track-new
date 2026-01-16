@@ -104,10 +104,14 @@ export async function POST(request: NextRequest) {
     let maxIterations = 5; // Limiter les itérations pour éviter les boucles infinies
     let iteration = 0;
 
+    // Désactiver temporairement les tool calls pour debug
+    // TODO: Réactiver une fois que le coach de base fonctionne
+    const ENABLE_TOOL_CALLING = false;
+    
     while (iteration < maxIterations) {
       try {
         // Vérifier si c'est la première itération et si on doit utiliser les tools
-        const useTools = iteration === 0 ? COACH_TOOLS : undefined;
+        const useTools = ENABLE_TOOL_CALLING && iteration === 0 ? COACH_TOOLS : undefined;
         
         const requestOptions: any = {
           model: DEFAULT_MODEL,
