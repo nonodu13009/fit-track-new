@@ -45,6 +45,169 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const masteryTier = calculateMasteryTier(pas, pasProgress);
 
+  // État pour les inputs des paliers
+  const [kReps, setKReps] = useState(pasProgress.paliersState.K.repsCompleted.toString());
+  const [eTotalReps, setETotalReps] = useState(pasProgress.paliersState.E.totalReps.toString());
+  const [eCleanReps, setECleanReps] = useState(pasProgress.paliersState.E.cleanReps.toString());
+  const [aAttempts, setAAttempts] = useState(pasProgress.paliersState.A.positionalTest.attempts.toString());
+  const [aSuccesses, setASuccesses] = useState(pasProgress.paliersState.A.positionalTest.successes.toString());
+  const [iOccurrences, setIOccurrences] = useState(pasProgress.paliersState.I.freeSparringTest.occurrences.toString());
+
+  const handleUpdatePalierK = async () => {
+    const reps = parseInt(kReps) || 0;
+    if (reps < 0 || reps > 10) return;
+
+    setIsUpdating(true);
+    try {
+      const updatedK = validatePalierK(pasProgress.paliersState.K, reps);
+      const updatedPasProgress: PasProgress = {
+        ...pasProgress,
+        paliersState: {
+          ...pasProgress.paliersState,
+          K: updatedK,
+        },
+        updatedAt: new Date().toISOString(),
+        volumeCompleted: pasProgress.volumeCompleted + reps,
+      };
+
+      const updatedProgress: UserProgress = {
+        ...progress,
+        pas: {
+          ...progress.pas,
+          [pas.id]: updatedPasProgress,
+        },
+      };
+
+      await onUpdate(updatedProgress);
+      success("Palier K mis à jour !");
+      setKReps(updatedK.repsCompleted.toString());
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdatePalierE = async () => {
+    const totalReps = parseInt(eTotalReps) || 0;
+    const cleanReps = parseInt(eCleanReps) || 0;
+    if (totalReps < 0 || cleanReps < 0 || cleanReps > totalReps) return;
+
+    setIsUpdating(true);
+    try {
+      const updatedE = validatePalierE(pasProgress.paliersState.E, totalReps, cleanReps);
+      const updatedPasProgress: PasProgress = {
+        ...pasProgress,
+        paliersState: {
+          ...pasProgress.paliersState,
+          E: updatedE,
+        },
+        updatedAt: new Date().toISOString(),
+        volumeCompleted: pasProgress.volumeCompleted + totalReps,
+      };
+
+      const updatedProgress: UserProgress = {
+        ...progress,
+        pas: {
+          ...progress.pas,
+          [pas.id]: updatedPasProgress,
+        },
+      };
+
+      await onUpdate(updatedProgress);
+      success("Palier E mis à jour !");
+      setETotalReps(updatedE.totalReps.toString());
+      setECleanReps(updatedE.cleanReps.toString());
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdatePalierA = async () => {
+    const attempts = parseInt(aAttempts) || 0;
+    const successes = parseInt(aSuccesses) || 0;
+    if (attempts < 0 || successes < 0 || successes > attempts) return;
+
+    setIsUpdating(true);
+    try {
+      const sessionDate = new Date().toISOString().split("T")[0];
+      const updatedA = validatePalierA(
+        pasProgress.paliersState.A,
+        attempts - pasProgress.paliersState.A.positionalTest.attempts,
+        successes - pasProgress.paliersState.A.positionalTest.successes,
+        sessionDate
+      );
+      const updatedPasProgress: PasProgress = {
+        ...pasProgress,
+        paliersState: {
+          ...pasProgress.paliersState,
+          A: updatedA,
+        },
+        updatedAt: new Date().toISOString(),
+        sessions: [...new Set([...pasProgress.sessions, sessionDate])],
+      };
+
+      const updatedProgress: UserProgress = {
+        ...progress,
+        pas: {
+          ...progress.pas,
+          [pas.id]: updatedPasProgress,
+        },
+      };
+
+      await onUpdate(updatedProgress);
+      success("Palier A mis à jour !");
+      setAAttempts(updatedA.positionalTest.attempts.toString());
+      setASuccesses(updatedA.positionalTest.successes.toString());
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdatePalierI = async () => {
+    const occurrences = parseInt(iOccurrences) || 0;
+    if (occurrences < 0) return;
+
+    setIsUpdating(true);
+    try {
+      const sessionDate = new Date().toISOString().split("T")[0];
+      const updatedI = validatePalierI(
+        pasProgress.paliersState.I,
+        occurrences - pasProgress.paliersState.I.freeSparringTest.occurrences,
+        sessionDate
+      );
+      const updatedPasProgress: PasProgress = {
+        ...pasProgress,
+        paliersState: {
+          ...pasProgress.paliersState,
+          I: updatedI,
+        },
+        updatedAt: new Date().toISOString(),
+        sessions: [...new Set([...pasProgress.sessions, sessionDate])],
+      };
+
+      const updatedProgress: UserProgress = {
+        ...progress,
+        pas: {
+          ...progress.pas,
+          [pas.id]: updatedPasProgress,
+        },
+      };
+
+      await onUpdate(updatedProgress);
+      success("Palier I mis à jour !");
+      setIOccurrences(updatedI.freeSparringTest.occurrences.toString());
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleValidate = async () => {
     if (!canPasBeValidated(pas, progress)) {
       return;
@@ -133,8 +296,8 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
           <h2 className="text-lg font-semibold mb-2">Paliers de validation</h2>
 
           {/* Palier K */}
-          <div className="p-3 bg-surface rounded-lg">
-            <div className="flex items-center justify-between mb-2">
+          <div className="p-4 bg-surface rounded-lg border border-white/10">
+            <div className="flex items-center justify-between mb-3">
               <h3 className="font-medium text-white">K - Connaissance</h3>
               <Badge
                 variant={
@@ -153,17 +316,36 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
                     : "Non commencé"}
               </Badge>
             </div>
-            <p className="text-sm text-gray-400 mb-2">
+            <p className="text-sm text-gray-400 mb-3">
               10 répétitions propres d&apos;affilée (vitesse lente)
             </p>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 mb-3">
               Répétitions complétées: {pasProgress.paliersState.K.repsCompleted} / 10
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="0"
+                max="10"
+                value={kReps}
+                onChange={(e) => setKReps(e.target.value)}
+                placeholder="0-10"
+                className="flex-1"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleUpdatePalierK}
+                disabled={isUpdating}
+              >
+                Mettre à jour
+              </Button>
             </div>
           </div>
 
           {/* Palier E */}
-          <div className="p-3 bg-surface rounded-lg">
-            <div className="flex items-center justify-between mb-2">
+          <div className="p-4 bg-surface rounded-lg border border-white/10">
+            <div className="flex items-center justify-between mb-3">
               <h3 className="font-medium text-white">E - Exécution</h3>
               <Badge
                 variant={
@@ -182,18 +364,51 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
                     : "Non commencé"}
               </Badge>
             </div>
-            <p className="text-sm text-gray-400 mb-2">
+            <p className="text-sm text-gray-400 mb-3">
               50 reps totales + 10 reps propres à vitesse normale
             </p>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 mb-3">
               Total: {pasProgress.paliersState.E.totalReps} / 50 • Propre:{" "}
               {pasProgress.paliersState.E.cleanReps} / 10
             </div>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Total reps</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={eTotalReps}
+                  onChange={(e) => setETotalReps(e.target.value)}
+                  placeholder="0"
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Reps propres</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={eCleanReps}
+                  onChange={(e) => setECleanReps(e.target.value)}
+                  placeholder="0"
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleUpdatePalierE}
+              disabled={isUpdating}
+              className="w-full"
+            >
+              Mettre à jour
+            </Button>
           </div>
 
           {/* Palier A */}
-          <div className="p-3 bg-surface rounded-lg">
-            <div className="flex items-center justify-between mb-2">
+          <div className="p-4 bg-surface rounded-lg border border-white/10">
+            <div className="flex items-center justify-between mb-3">
               <h3 className="font-medium text-white">A - Application</h3>
               <Badge
                 variant={
@@ -212,19 +427,52 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
                     : "Non commencé"}
               </Badge>
             </div>
-            <p className="text-sm text-gray-400 mb-2">
+            <p className="text-sm text-gray-400 mb-3">
               Positional sparring: ≥ {pasProgress.paliersState.A.targetRate}% de réussite
             </p>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 mb-3">
               Taux: {pasProgress.paliersState.A.positionalTest.successRate}% (
               {pasProgress.paliersState.A.positionalTest.successes} /{" "}
               {pasProgress.paliersState.A.positionalTest.attempts})
             </div>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Tentatives</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={aAttempts}
+                  onChange={(e) => setAAttempts(e.target.value)}
+                  placeholder="0"
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Réussites</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={aSuccesses}
+                  onChange={(e) => setASuccesses(e.target.value)}
+                  placeholder="0"
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleUpdatePalierA}
+              disabled={isUpdating}
+              className="w-full"
+            >
+              Mettre à jour
+            </Button>
           </div>
 
           {/* Palier I */}
-          <div className="p-3 bg-surface rounded-lg">
-            <div className="flex items-center justify-between mb-2">
+          <div className="p-4 bg-surface rounded-lg border border-white/10">
+            <div className="flex items-center justify-between mb-3">
               <h3 className="font-medium text-white">I - Intégration</h3>
               <Badge
                 variant={
@@ -243,15 +491,33 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
                     : "Non commencé"}
               </Badge>
             </div>
-            <p className="text-sm text-gray-400 mb-2">
+            <p className="text-sm text-gray-400 mb-3">
               Sparring libre: ≥ {pasProgress.paliersState.I.occurrencesMin} occurrence(s) sur{" "}
               {pasProgress.paliersState.I.sessionsRequired} séances
             </p>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 mb-3">
               Occurrences: {pasProgress.paliersState.I.freeSparringTest.occurrences} /
               {pasProgress.paliersState.I.occurrencesMin} • Séances:{" "}
               {new Set(pasProgress.paliersState.I.freeSparringTest.sessions).size} /
               {pasProgress.paliersState.I.sessionsRequired}
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="0"
+                value={iOccurrences}
+                onChange={(e) => setIOccurrences(e.target.value)}
+                placeholder="Occurrences"
+                className="flex-1"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleUpdatePalierI}
+                disabled={isUpdating}
+              >
+                Mettre à jour
+              </Button>
             </div>
           </div>
         </div>
