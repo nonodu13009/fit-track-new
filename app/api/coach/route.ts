@@ -147,11 +147,22 @@ export async function POST(request: NextRequest) {
           // Exécuter chaque tool call
           for (const toolCall of toolCalls) {
             const toolName = toolCall.function?.name || "unknown";
-            const toolCallId = toolCall.id || toolCall.tool_call_id || "";
+            const toolCallId = toolCall.id || toolCall.tool_call_id || `fallback_${Date.now()}_${Math.random()}`;
             
             try {
               if (!toolCall.function?.name) {
                 console.error("Tool call sans nom:", toolCall);
+                // ⚠️ CRITIQUE : Toujours envoyer une réponse, même pour un tool call invalide
+                // Sinon Mistral génère l'erreur 3230 "Not the same number of function calls and responses"
+                messages.push({
+                  role: "tool",
+                  content: JSON.stringify({
+                    success: false,
+                    error: "Tool call invalide : nom de fonction manquant",
+                  }),
+                  tool_call_id: toolCallId,
+                  name: "unknown",
+                });
                 continue;
               }
 
@@ -188,19 +199,37 @@ export async function POST(request: NextRequest) {
 
               // Ajouter le résultat du tool (utiliser tool_call_id avec underscore)
               // Le SDK Mistral attend tool_call_id (avec underscore)
-              const toolMessage: any = {
-                role: "tool",
-                content: JSON.stringify(toolResult),
-                tool_call_id: toolCallId,
-              };
-              // Ajouter name seulement si présent (optionnel selon SDK)
-              if (toolName && toolName !== "unknown") {
-                toolMessage.name = toolName;
+              // ⚠️ CRITIQUE : Vérifier que toolCallId n'est pas vide
+              if (!toolCallId) {
+                console.error("Tool call sans ID:", toolCall);
+                // Générer un ID de fallback si manquant
+                const fallbackId = `fallback_${Date.now()}_${Math.random()}`;
+                messages.push({
+                  role: "tool",
+                  content: JSON.stringify({
+                    success: false,
+                    error: "Tool call invalide : ID manquant",
+                  }),
+                  tool_call_id: fallbackId,
+                  name: toolName,
+                });
+              } else {
+                const toolMessage: any = {
+                  role: "tool",
+                  content: JSON.stringify(toolResult),
+                  tool_call_id: toolCallId,
+                };
+                // Ajouter name seulement si présent (optionnel selon SDK)
+                if (toolName && toolName !== "unknown") {
+                  toolMessage.name = toolName;
+                }
+                messages.push(toolMessage);
               }
-              messages.push(toolMessage);
             } catch (toolError: any) {
               console.error(`Erreur lors de l'exécution du tool ${toolName}:`, toolError);
-              // Ajouter un message d'erreur pour le tool
+              // ⚠️ CRITIQUE : Toujours envoyer une réponse, même en cas d'erreur
+              // Vérifier que toolCallId n'est pas vide
+              const errorToolCallId = toolCallId || `error_${Date.now()}_${Math.random()}`;
               messages.push({
                 role: "tool",
                 content: JSON.stringify({
@@ -208,7 +237,7 @@ export async function POST(request: NextRequest) {
                   error: toolError.message || "Erreur lors de l'exécution",
                 }),
                 name: toolName,
-                tool_call_id: toolCallId,
+                tool_call_id: errorToolCallId,
               });
             }
           }
