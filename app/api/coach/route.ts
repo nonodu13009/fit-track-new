@@ -138,9 +138,11 @@ export async function POST(request: NextRequest) {
 
           // Exécuter chaque tool call
           for (const toolCall of toolCalls) {
+            const toolName = toolCall.function?.name || "unknown";
+            const toolCallId = toolCall.id || toolCall.tool_call_id || "";
+            
             try {
-              const toolName = toolCall.function?.name;
-              if (!toolName) {
+              if (!toolCall.function?.name) {
                 console.error("Tool call sans nom:", toolCall);
                 continue;
               }
@@ -156,32 +158,32 @@ export async function POST(request: NextRequest) {
                 toolArgs = {};
               }
 
-          let toolResult: any;
+              let toolResult: any;
 
-          try {
-            switch (toolName) {
-              case "getCalendarEvents":
-                toolResult = await handleGetCalendarEvents(userId, toolArgs);
-                break;
-              case "createEvent":
-                toolResult = await handleCreateEvent(userId, toolArgs);
-                break;
-              case "updateEvent":
-                toolResult = await handleUpdateEvent(userId, toolArgs);
-                break;
-              default:
-                toolResult = { error: `Tool inconnu: ${toolName}` };
-            }
-          } catch (error: any) {
-            toolResult = { error: error.message || "Erreur lors de l'exécution" };
-          }
+              try {
+                switch (toolName) {
+                  case "getCalendarEvents":
+                    toolResult = await handleGetCalendarEvents(userId, toolArgs);
+                    break;
+                  case "createEvent":
+                    toolResult = await handleCreateEvent(userId, toolArgs);
+                    break;
+                  case "updateEvent":
+                    toolResult = await handleUpdateEvent(userId, toolArgs);
+                    break;
+                  default:
+                    toolResult = { error: `Tool inconnu: ${toolName}` };
+                }
+              } catch (error: any) {
+                toolResult = { error: error.message || "Erreur lors de l'exécution" };
+              }
 
               // Ajouter le résultat du tool (utiliser tool_call_id avec underscore)
               messages.push({
                 role: "tool",
                 content: JSON.stringify(toolResult),
                 name: toolName,
-                tool_call_id: toolCall.id || toolCall.tool_call_id,
+                tool_call_id: toolCallId,
               });
             } catch (toolError: any) {
               console.error(`Erreur lors de l'exécution du tool ${toolName}:`, toolError);
@@ -193,7 +195,7 @@ export async function POST(request: NextRequest) {
                   error: toolError.message || "Erreur lors de l'exécution",
                 }),
                 name: toolName,
-                tool_call_id: toolCall.id || toolCall.tool_call_id,
+                tool_call_id: toolCallId,
               });
             }
           }
