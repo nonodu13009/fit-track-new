@@ -11,6 +11,12 @@ import {
   orderBy,
   limit,
 } from "@/lib/firebase/firestore";
+import {
+  adminGetDocument,
+  adminQueryDocuments,
+  adminCreateDocument,
+  adminUpdateDocument,
+} from "@/lib/firebase/admin";
 import { parseISO, format, addDays, startOfDay, isValid } from "date-fns";
 
 // ========================================
@@ -110,22 +116,27 @@ export async function POST(request: NextRequest) {
 
     if (includeContext) {
       try {
+        // ⚠️ Utiliser Admin SDK pour bypass les règles Firestore dans les routes API
         // Récupérer les dernières séances (7 derniers jours)
-        const recentWorkouts = await queryDocuments("workouts", [
-          where("userId", "==", userId),
-          orderBy("date", "desc"),
-          limit(10),
-        ]);
+        const recentWorkouts = await adminQueryDocuments(
+          "workouts",
+          [{ field: "userId", operator: "==", value: userId }],
+          "date",
+          "desc",
+          10
+        );
 
         // Récupérer le profil utilisateur
-        const userProfileDoc = await getDocument("userProfiles", userId);
+        const userProfileDoc = await adminGetDocument("userProfiles", userId);
 
         // Récupérer les dernières pesées
-        const recentWeights = await queryDocuments("weighIns", [
-          where("userId", "==", userId),
-          orderBy("date", "desc"),
-          limit(5),
-        ]);
+        const recentWeights = await adminQueryDocuments(
+          "weighIns",
+          [{ field: "userId", operator: "==", value: userId }],
+          "date",
+          "desc",
+          5
+        );
 
         // Construire le contexte
         if (userProfileDoc) {
@@ -493,10 +504,13 @@ async function handleGetCalendarEvents(
     }
 
     // Récupérer tous les événements de l'utilisateur et filtrer côté serveur
-    const allEvents = await queryDocuments("calendarEvents", [
-      where("userId", "==", userId),
-      orderBy("start", "asc"),
-    ]);
+    // ⚠️ Utiliser Admin SDK pour bypass les règles Firestore
+    const allEvents = await adminQueryDocuments(
+      "calendarEvents",
+      [{ field: "userId", operator: "==", value: userId }],
+      "start",
+      "asc"
+    );
 
     // Filtrer par date
     const events = allEvents.filter((e: any) => {
@@ -664,7 +678,8 @@ async function handleCreateEvent(
       notes: args.notes || "",
     };
 
-    await createDocument("calendarEvents", eventId, eventData);
+    // ⚠️ Utiliser Admin SDK pour bypass les règles Firestore
+    await adminCreateDocument("calendarEvents", eventId, eventData);
 
     return {
       success: true,
@@ -701,7 +716,8 @@ async function handleUpdateEvent(
     }
 
     // Vérifier que l'événement existe et appartient à l'utilisateur
-    const event = await getDocument("calendarEvents", args.eventId);
+    // ⚠️ Utiliser Admin SDK pour bypass les règles Firestore
+    const event = await adminGetDocument("calendarEvents", args.eventId);
     if (!event || (event as any).userId !== userId) {
       return { success: false, error: "Événement non trouvé" };
     }
@@ -838,7 +854,8 @@ async function handleUpdateEvent(
       }
     }
 
-    await updateDocument("calendarEvents", args.eventId, updateData);
+    // ⚠️ Utiliser Admin SDK pour bypass les règles Firestore
+    await adminUpdateDocument("calendarEvents", args.eventId, updateData);
 
     return {
       success: true,
