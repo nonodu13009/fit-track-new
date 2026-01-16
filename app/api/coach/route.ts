@@ -11,7 +11,87 @@ import {
   orderBy,
   limit,
 } from "@/lib/firebase/firestore";
-import { parseISO, format, addDays, startOfDay } from "date-fns";
+import { parseISO, format, addDays, startOfDay, isValid } from "date-fns";
+
+// ========================================
+// Fonctions utilitaires de validation
+// ========================================
+
+/**
+ * Valide le format de date ISO (YYYY-MM-DD)
+ */
+function validateDateFormat(date: string): boolean {
+  if (!date || typeof date !== "string") {
+    return false;
+  }
+  // Format ISO YYYY-MM-DD
+  const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!isoDateRegex.test(date)) {
+    return false;
+  }
+  // Vérifier que la date est valide
+  try {
+    const parsed = parseISO(date);
+    return isValid(parsed);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Valide le format d'heure HH:mm
+ */
+function validateTimeFormat(time: string): boolean {
+  if (!time || typeof time !== "string") {
+    return false;
+  }
+  // Format HH:mm
+  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  return timeRegex.test(time);
+}
+
+/**
+ * Retry avec backoff exponentiel pour erreurs temporaires
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Vérifier si l'erreur est retryable (429 ou 500)
+      const isRetryable =
+        error.message?.includes("429") ||
+        error.message?.includes("rate limit") ||
+        error.message?.includes("500") ||
+        error.response?.status === 429 ||
+        error.response?.status === 500;
+      
+      // Si dernière tentative ou erreur non retryable, throw
+      if (attempt === maxRetries || !isRetryable) {
+        throw error;
+      }
+      
+      // Calculer délai avec backoff exponentiel
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.log(
+        `Tentative ${attempt + 1}/${maxRetries} échouée, retry dans ${delay}ms...`
+      );
+      
+      // Attendre avant retry
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -123,7 +203,12 @@ export async function POST(request: NextRequest) {
           requestOptions.tools = useTools;
         }
         
-        const response = await mistral.chat.complete(requestOptions);
+        // Appel Mistral avec retry automatique pour erreurs temporaires (429, 500)
+        const response = await retryWithBackoff(
+          () => mistral.chat.complete(requestOptions),
+          3, // maxRetries
+          1000 // baseDelay (1 seconde)
+        );
 
         const choice = response.choices?.[0];
         if (!choice) {
@@ -137,12 +222,28 @@ export async function POST(request: NextRequest) {
         const toolCalls = (assistantMessage as any).tool_calls || (assistantMessage as any).toolCalls;
         
         if (toolCalls && toolCalls.length > 0) {
+          // Logging des tool calls reçus
+          console.log(`[Coach API] Itération ${iteration + 1}: ${toolCalls.length} tool call(s) reçu(s)`);
+          toolCalls.forEach((tc: any, index: number) => {
+            console.log(
+              `[Coach API] Tool call ${index + 1}/${toolCalls.length}:`,
+              {
+                id: tc.id || tc.tool_call_id || "missing",
+                name: tc.function?.name || "unknown",
+                arguments: tc.function?.arguments || "none",
+              }
+            );
+          });
+
           // Ajouter le message de l'assistant avec tool calls
           messages.push({
             role: "assistant",
             content: assistantMessage.content || null,
             tool_calls: toolCalls,
           });
+
+          // Compteur pour vérifier que chaque tool call reçoit une réponse
+          let toolResponsesCount = 0;
 
           // Exécuter chaque tool call
           for (const toolCall of toolCalls) {
@@ -154,7 +255,7 @@ export async function POST(request: NextRequest) {
                 console.error("Tool call sans nom:", toolCall);
                 // ⚠️ CRITIQUE : Toujours envoyer une réponse, même pour un tool call invalide
                 // Sinon Mistral génère l'erreur 3230 "Not the same number of function calls and responses"
-                messages.push({
+                const invalidResponse = {
                   role: "tool",
                   content: JSON.stringify({
                     success: false,
@@ -162,7 +263,13 @@ export async function POST(request: NextRequest) {
                   }),
                   tool_call_id: toolCallId,
                   name: "unknown",
-                });
+                };
+                messages.push(invalidResponse);
+                toolResponsesCount++;
+                console.log(
+                  `[Coach API] Tool response envoyée (nom manquant):`,
+                  { tool_call_id: toolCallId, name: "unknown", success: false }
+                );
                 continue;
               }
 
@@ -172,8 +279,14 @@ export async function POST(request: NextRequest) {
                 if (argsString) {
                   toolArgs = typeof argsString === "string" ? JSON.parse(argsString) : argsString;
                 }
+                // Logging des arguments parsés
+                console.log(`[Coach API] Arguments parsés pour ${toolName}:`, toolArgs);
               } catch (parseError) {
-                console.error("Erreur parsing arguments:", parseError, toolCall.function?.arguments);
+                console.error(
+                  `[Coach API] Erreur parsing arguments pour ${toolName}:`,
+                  parseError,
+                  toolCall.function?.arguments
+                );
                 toolArgs = {};
               }
 
@@ -201,10 +314,10 @@ export async function POST(request: NextRequest) {
               // Le SDK Mistral attend tool_call_id (avec underscore)
               // ⚠️ CRITIQUE : Vérifier que toolCallId n'est pas vide
               if (!toolCallId) {
-                console.error("Tool call sans ID:", toolCall);
+                console.error(`[Coach API] Tool call sans ID pour ${toolName}:`, toolCall);
                 // Générer un ID de fallback si manquant
                 const fallbackId = `fallback_${Date.now()}_${Math.random()}`;
-                messages.push({
+                const errorResponse = {
                   role: "tool",
                   content: JSON.stringify({
                     success: false,
@@ -212,7 +325,13 @@ export async function POST(request: NextRequest) {
                   }),
                   tool_call_id: fallbackId,
                   name: toolName,
-                });
+                };
+                messages.push(errorResponse);
+                toolResponsesCount++;
+                console.log(
+                  `[Coach API] Tool response envoyée (fallback ID):`,
+                  { tool_call_id: fallbackId, name: toolName, success: false }
+                );
               } else {
                 const toolMessage: any = {
                   role: "tool",
@@ -224,13 +343,24 @@ export async function POST(request: NextRequest) {
                   toolMessage.name = toolName;
                 }
                 messages.push(toolMessage);
+                toolResponsesCount++;
+                // Logging de la réponse envoyée
+                console.log(
+                  `[Coach API] Tool response envoyée:`,
+                  {
+                    tool_call_id: toolCallId,
+                    name: toolName,
+                    success: toolResult.success !== false,
+                    hasError: toolResult.error !== undefined,
+                  }
+                );
               }
             } catch (toolError: any) {
-              console.error(`Erreur lors de l'exécution du tool ${toolName}:`, toolError);
+              console.error(`[Coach API] Erreur lors de l'exécution du tool ${toolName}:`, toolError);
               // ⚠️ CRITIQUE : Toujours envoyer une réponse, même en cas d'erreur
               // Vérifier que toolCallId n'est pas vide
               const errorToolCallId = toolCallId || `error_${Date.now()}_${Math.random()}`;
-              messages.push({
+              const errorResponse = {
                 role: "tool",
                 content: JSON.stringify({
                   success: false,
@@ -238,8 +368,25 @@ export async function POST(request: NextRequest) {
                 }),
                 name: toolName,
                 tool_call_id: errorToolCallId,
-              });
+              };
+              messages.push(errorResponse);
+              toolResponsesCount++;
+              console.log(
+                `[Coach API] Tool response d'erreur envoyée:`,
+                { tool_call_id: errorToolCallId, name: toolName, error: toolError.message }
+              );
             }
+          }
+
+          // Vérifier que le nombre de réponses correspond au nombre de tool calls
+          if (toolResponsesCount !== toolCalls.length) {
+            console.error(
+              `[Coach API] ⚠️ MISMATCH: ${toolCalls.length} tool call(s) reçu(s) mais ${toolResponsesCount} réponse(s) envoyée(s)`
+            );
+          } else {
+            console.log(
+              `[Coach API] ✅ Tous les tool calls ont reçu une réponse (${toolResponsesCount}/${toolCalls.length})`
+            );
           }
 
           iteration++;
@@ -266,23 +413,28 @@ export async function POST(request: NextRequest) {
         
         // Si c'est la première itération et que l'erreur est liée aux tools, essayer sans tools
         if (iteration === 0 && (iterationError.message?.includes("tool") || iterationError.message?.includes("function"))) {
-          console.log("Tentative sans tools en fallback...");
+          console.log("[Coach API] Tentative sans tools en fallback...");
           try {
-            const fallbackResponse = await mistral.chat.complete({
-              model: DEFAULT_MODEL,
-              messages: [
-                {
-                  role: "system",
-                  content: COACH_SYSTEM_PROMPT + (contextText ? `\n\n${contextText}` : ""),
-                },
-                {
-                  role: "user",
-                  content: message,
-                },
-              ],
-              temperature: 0.7,
-              maxTokens: 1000,
-            });
+            const fallbackResponse = await retryWithBackoff(
+              () =>
+                mistral.chat.complete({
+                  model: DEFAULT_MODEL,
+                  messages: [
+                    {
+                      role: "system",
+                      content: COACH_SYSTEM_PROMPT + (contextText ? `\n\n${contextText}` : ""),
+                    },
+                    {
+                      role: "user",
+                      content: message,
+                    },
+                  ],
+                  temperature: 0.7,
+                  maxTokens: 1000,
+                }),
+              3, // maxRetries
+              1000 // baseDelay
+            );
             const fallbackContent = fallbackResponse.choices?.[0]?.message?.content;
             finalResponse =
               typeof fallbackContent === "string"
@@ -356,12 +508,68 @@ async function handleGetCalendarEvents(
   args: { startDate?: string; endDate?: string }
 ) {
   try {
-    const start = args.startDate
-      ? startOfDay(parseISO(args.startDate))
-      : startOfDay(new Date());
-    const end = args.endDate
-      ? startOfDay(parseISO(args.endDate))
-      : startOfDay(addDays(new Date(), 7));
+    let start: Date;
+    let end: Date;
+
+    // Valider et parser startDate si fourni
+    if (args.startDate) {
+      if (!validateDateFormat(args.startDate)) {
+        return {
+          success: false,
+          error: `Format de date invalide pour startDate: "${args.startDate}". Format attendu: YYYY-MM-DD`,
+        };
+      }
+      try {
+        start = startOfDay(parseISO(args.startDate));
+        if (!isValid(start)) {
+          return {
+            success: false,
+            error: `Date invalide pour startDate: "${args.startDate}"`,
+          };
+        }
+      } catch (parseError: any) {
+        return {
+          success: false,
+          error: `Erreur lors du parsing de startDate: ${parseError.message}`,
+        };
+      }
+    } else {
+      start = startOfDay(new Date());
+    }
+
+    // Valider et parser endDate si fourni
+    if (args.endDate) {
+      if (!validateDateFormat(args.endDate)) {
+        return {
+          success: false,
+          error: `Format de date invalide pour endDate: "${args.endDate}". Format attendu: YYYY-MM-DD`,
+        };
+      }
+      try {
+        end = startOfDay(parseISO(args.endDate));
+        if (!isValid(end)) {
+          return {
+            success: false,
+            error: `Date invalide pour endDate: "${args.endDate}"`,
+          };
+        }
+      } catch (parseError: any) {
+        return {
+          success: false,
+          error: `Erreur lors du parsing de endDate: ${parseError.message}`,
+        };
+      }
+    } else {
+      end = startOfDay(addDays(new Date(), 7));
+    }
+
+    // Vérifier que start <= end
+    if (start > end) {
+      return {
+        success: false,
+        error: "startDate doit être antérieure ou égale à endDate",
+      };
+    }
 
     // Récupérer tous les événements de l'utilisateur et filtrer côté serveur
     const allEvents = await queryDocuments("calendarEvents", [
@@ -371,25 +579,45 @@ async function handleGetCalendarEvents(
 
     // Filtrer par date
     const events = allEvents.filter((e: any) => {
-      const eventDate = parseISO(e.start);
-      return eventDate >= start && eventDate <= end;
+      try {
+        const eventDate = parseISO(e.start);
+        return isValid(eventDate) && eventDate >= start && eventDate <= end;
+      } catch {
+        // Ignorer les événements avec dates invalides
+        return false;
+      }
     });
 
     return {
       success: true,
-      events: events.map((e: any) => ({
-        id: e.id,
-        title: e.title,
-        sport: e.sport,
-        date: format(parseISO(e.start), "yyyy-MM-dd"),
-        time: e.isAllDay ? null : format(parseISO(e.start), "HH:mm"),
-        duration: e.duration,
-        status: e.status,
-      })),
+      events: events.map((e: any) => {
+        try {
+          return {
+            id: e.id,
+            title: e.title,
+            sport: e.sport,
+            date: format(parseISO(e.start), "yyyy-MM-dd"),
+            time: e.isAllDay ? null : format(parseISO(e.start), "HH:mm"),
+            duration: e.duration,
+            status: e.status,
+          };
+        } catch {
+          // Retourner un format minimal si parsing échoue
+          return {
+            id: e.id,
+            title: e.title || "Sans titre",
+            sport: e.sport || "",
+            date: "Date invalide",
+            time: null,
+            duration: e.duration || 60,
+            status: e.status || "planned",
+          };
+        }
+      }),
       count: events.length,
     };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error.message || "Erreur inconnue" };
   }
 }
 
@@ -405,22 +633,97 @@ async function handleCreateEvent(
   }
 ) {
   try {
-    const eventId = `${userId}_${Date.now()}`;
-    const dateObj = parseISO(args.date);
+    // Valider que title n'est pas vide
+    if (!args.title || typeof args.title !== "string" || args.title.trim().length === 0) {
+      return {
+        success: false,
+        error: "Le titre de l'événement est requis et ne peut pas être vide",
+      };
+    }
 
+    // Valider le format de date
+    if (!validateDateFormat(args.date)) {
+      return {
+        success: false,
+        error: `Format de date invalide: "${args.date}". Format attendu: YYYY-MM-DD`,
+      };
+    }
+
+    // Parser la date avec gestion d'erreur
+    let dateObj: Date;
+    try {
+      dateObj = parseISO(args.date);
+      if (!isValid(dateObj)) {
+        return {
+          success: false,
+          error: `Date invalide: "${args.date}"`,
+        };
+      }
+    } catch (parseError: any) {
+      return {
+        success: false,
+        error: `Erreur lors du parsing de la date: ${parseError.message}`,
+      };
+    }
+
+    // Valider le format d'heure si fourni
+    if (args.time) {
+      if (!validateTimeFormat(args.time)) {
+        return {
+          success: false,
+          error: `Format d'heure invalide: "${args.time}". Format attendu: HH:mm (ex: 18:30)`,
+        };
+      }
+    }
+
+    // Valider la durée si fournie
+    if (args.duration !== undefined) {
+      if (typeof args.duration !== "number" || args.duration <= 0 || args.duration > 1440) {
+        return {
+          success: false,
+          error: `Durée invalide: ${args.duration}. Doit être un nombre entre 1 et 1440 minutes`,
+        };
+      }
+    }
+
+    const eventId = `${userId}_${Date.now()}`;
     let startDate: string;
     let endDate: string;
 
     if (args.time) {
       // Événement avec heure précise
-      const [hours, minutes] = args.time.split(":").map(Number);
-      dateObj.setHours(hours, minutes, 0, 0);
-      startDate = dateObj.toISOString();
+      try {
+        const timeParts = args.time.split(":");
+        if (timeParts.length !== 2) {
+          return {
+            success: false,
+            error: `Format d'heure invalide: "${args.time}". Format attendu: HH:mm`,
+          };
+        }
 
-      const duration = args.duration || 60;
-      const endDateObj = new Date(dateObj);
-      endDateObj.setMinutes(endDateObj.getMinutes() + duration);
-      endDate = endDateObj.toISOString();
+        const hours = parseInt(timeParts[0], 10);
+        const minutes = parseInt(timeParts[1], 10);
+
+        if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+          return {
+            success: false,
+            error: `Heure invalide: "${args.time}". Heures: 0-23, Minutes: 0-59`,
+          };
+        }
+
+        dateObj.setHours(hours, minutes, 0, 0);
+        startDate = dateObj.toISOString();
+
+        const duration = args.duration || 60;
+        const endDateObj = new Date(dateObj);
+        endDateObj.setMinutes(endDateObj.getMinutes() + duration);
+        endDate = endDateObj.toISOString();
+      } catch (timeError: any) {
+        return {
+          success: false,
+          error: `Erreur lors du traitement de l'heure: ${timeError.message}`,
+        };
+      }
     } else {
       // Événement toute la journée
       const dayStart = startOfDay(dateObj);
@@ -430,7 +733,7 @@ async function handleCreateEvent(
 
     const eventData = {
       userId,
-      title: args.title,
+      title: args.title.trim(),
       sport: args.sport || "",
       duration: args.duration || 60,
       start: startDate,
@@ -450,7 +753,10 @@ async function handleCreateEvent(
       time: args.time || "Toute la journée",
     };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error.message || "Erreur lors de la création de l'événement",
+    };
   }
 }
 
@@ -465,6 +771,14 @@ async function handleUpdateEvent(
   }
 ) {
   try {
+    // Valider que eventId n'est pas vide
+    if (!args.eventId || typeof args.eventId !== "string" || args.eventId.trim().length === 0) {
+      return {
+        success: false,
+        error: "L'ID de l'événement est requis",
+      };
+    }
+
     // Vérifier que l'événement existe et appartient à l'utilisateur
     const event = await getDocument("calendarEvents", args.eventId);
     if (!event || (event as any).userId !== userId) {
@@ -473,24 +787,119 @@ async function handleUpdateEvent(
 
     const updateData: any = {};
 
-    if (args.title) updateData.title = args.title;
-    if (args.duration) updateData.duration = args.duration;
+    // Valider et mettre à jour le titre si fourni
+    if (args.title !== undefined) {
+      if (!args.title || typeof args.title !== "string" || args.title.trim().length === 0) {
+        return {
+          success: false,
+          error: "Le titre ne peut pas être vide",
+        };
+      }
+      updateData.title = args.title.trim();
+    }
+
+    // Valider la durée si fournie
+    if (args.duration !== undefined) {
+      if (typeof args.duration !== "number" || args.duration <= 0 || args.duration > 1440) {
+        return {
+          success: false,
+          error: `Durée invalide: ${args.duration}. Doit être un nombre entre 1 et 1440 minutes`,
+        };
+      }
+      updateData.duration = args.duration;
+    }
 
     // Si date ou heure changent, recalculer start/end
     if (args.date || args.time) {
-      const oldStart = parseISO((event as any).start);
-      const newDate = args.date ? parseISO(args.date) : oldStart;
+      // Valider le format de date si fourni
+      if (args.date && !validateDateFormat(args.date)) {
+        return {
+          success: false,
+          error: `Format de date invalide: "${args.date}". Format attendu: YYYY-MM-DD`,
+        };
+      }
+
+      // Valider le format d'heure si fourni
+      if (args.time && !validateTimeFormat(args.time)) {
+        return {
+          success: false,
+          error: `Format d'heure invalide: "${args.time}". Format attendu: HH:mm (ex: 18:30)`,
+        };
+      }
+
+      // Parser l'ancienne date de début
+      let oldStart: Date;
+      try {
+        oldStart = parseISO((event as any).start);
+        if (!isValid(oldStart)) {
+          return {
+            success: false,
+            error: "Erreur : la date de début de l'événement existant est invalide",
+          };
+        }
+      } catch (parseError: any) {
+        return {
+          success: false,
+          error: `Erreur lors du parsing de la date existante: ${parseError.message}`,
+        };
+      }
+
+      // Parser la nouvelle date si fournie
+      let newDate: Date;
+      if (args.date) {
+        try {
+          newDate = parseISO(args.date);
+          if (!isValid(newDate)) {
+            return {
+              success: false,
+              error: `Date invalide: "${args.date}"`,
+            };
+          }
+        } catch (parseError: any) {
+          return {
+            success: false,
+            error: `Erreur lors du parsing de la nouvelle date: ${parseError.message}`,
+          };
+        }
+      } else {
+        newDate = oldStart;
+      }
 
       if (args.time) {
-        const [hours, minutes] = args.time.split(":").map(Number);
-        newDate.setHours(hours, minutes, 0, 0);
-        updateData.start = newDate.toISOString();
-        updateData.isAllDay = false;
+        // Événement avec heure précise
+        try {
+          const timeParts = args.time.split(":");
+          if (timeParts.length !== 2) {
+            return {
+              success: false,
+              error: `Format d'heure invalide: "${args.time}". Format attendu: HH:mm`,
+            };
+          }
 
-        const duration = args.duration || (event as any).duration || 60;
-        const endDate = new Date(newDate);
-        endDate.setMinutes(endDate.getMinutes() + duration);
-        updateData.end = endDate.toISOString();
+          const hours = parseInt(timeParts[0], 10);
+          const minutes = parseInt(timeParts[1], 10);
+
+          if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+            return {
+              success: false,
+              error: `Heure invalide: "${args.time}". Heures: 0-23, Minutes: 0-59`,
+            };
+          }
+
+          newDate.setHours(hours, minutes, 0, 0);
+          updateData.start = newDate.toISOString();
+          updateData.isAllDay = false;
+
+          const duration = args.duration || (event as any).duration || 60;
+          const endDate = new Date(newDate);
+          endDate.setMinutes(endDate.getMinutes() + duration);
+          updateData.end = endDate.toISOString();
+        } catch (timeError: any) {
+          return {
+            success: false,
+            error: `Erreur lors du traitement de l'heure: ${timeError.message}`,
+          };
+        }
       } else if (args.date) {
         // Changement de date seulement, préserver l'heure
         const oldTime = new Date(oldStart);
@@ -516,6 +925,9 @@ async function handleUpdateEvent(
       eventId: args.eventId,
     };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error.message || "Erreur lors de la modification de l'événement",
+    };
   }
 }
