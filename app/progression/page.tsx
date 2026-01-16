@@ -142,7 +142,7 @@ export default function ProgressionPage() {
           size="sm"
           onClick={handleScrollToActive}
         >
-          Aller à l'étape active
+          Aller à l&apos;étape active
         </Button>
       </div>
 

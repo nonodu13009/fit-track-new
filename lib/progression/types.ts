@@ -76,6 +76,7 @@ export interface StepWithProgress extends Step {
   status: StepStatus;
   progress?: StepProgress;
   xpEarned?: number; // XP gagnée sur cette step
+  completion?: number; // Pourcentage de completion (0-100)
 }
 
 export interface BlockProgress {

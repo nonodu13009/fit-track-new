@@ -330,7 +330,7 @@ export function StepDetail({ step, progress, onUpdate }: StepDetailProps) {
             className="flex-1"
           >
             {canValidate
-              ? "Valider l'étape (+50 XP)"
+              ? "Valider l&apos;étape (+50 XP)"
               : "Conditions non remplies"}
           </Button>
         )}
