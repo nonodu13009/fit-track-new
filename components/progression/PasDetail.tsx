@@ -322,21 +322,53 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
             <div className="text-xs text-gray-500 mb-3">
               Répétitions complétées: {pasProgress.paliersState.K.repsCompleted} / 10
             </div>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min="0"
-                max="10"
-                value={kReps}
-                onChange={(e) => setKReps(e.target.value)}
-                placeholder="0-10"
-                className="flex-1"
-              />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setKReps(Math.max(0, parseInt(kReps) || 0 - 1).toString())}
+                  className="w-10 h-10 flex items-center justify-center"
+                >
+                  −
+                </Button>
+                <Input
+                  type="number"
+                  min="0"
+                  max="10"
+                  value={kReps}
+                  onChange={(e) => setKReps(e.target.value)}
+                  placeholder="0-10"
+                  className="flex-1 text-center text-lg font-semibold"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setKReps(Math.min(10, (parseInt(kReps) || 0) + 1).toString())}
+                  className="w-10 h-10 flex items-center justify-center"
+                >
+                  +
+                </Button>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {[1, 5, 10].map((value) => (
+                  <Button
+                    key={value}
+                    variant={parseInt(kReps) === value ? "primary" : "secondary"}
+                    size="sm"
+                    onClick={() => setKReps(value.toString())}
+                    className="flex-1 min-w-[60px]"
+                  >
+                    {value}
+                  </Button>
+                ))}
+              </div>
               <Button
-                variant="secondary"
+                variant="primary"
                 size="sm"
                 onClick={handleUpdatePalierK}
                 disabled={isUpdating}
+                className="w-full"
               >
                 Mettre à jour
               </Button>
@@ -371,39 +403,101 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
               Total: {pasProgress.paliersState.E.totalReps} / 50 • Propre:{" "}
               {pasProgress.paliersState.E.cleanReps} / 10
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="space-y-3">
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Total reps</label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={eTotalReps}
-                  onChange={(e) => setETotalReps(e.target.value)}
-                  placeholder="0"
-                  className="w-full"
-                />
+                <label className="text-xs text-gray-400 mb-2 block">Total reps</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setETotalReps(Math.max(0, (parseInt(eTotalReps) || 0) - 5).toString())}
+                    className="w-10 h-10 flex items-center justify-center"
+                  >
+                    −5
+                  </Button>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={eTotalReps}
+                    onChange={(e) => setETotalReps(e.target.value)}
+                    placeholder="0"
+                    className="flex-1 text-center text-lg font-semibold"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setETotalReps(((parseInt(eTotalReps) || 0) + 5).toString())}
+                    className="w-10 h-10 flex items-center justify-center"
+                  >
+                    +5
+                  </Button>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {[10, 25, 50].map((value) => (
+                    <Button
+                      key={value}
+                      variant={parseInt(eTotalReps) === value ? "primary" : "secondary"}
+                      size="sm"
+                      onClick={() => setETotalReps(value.toString())}
+                      className="flex-1 min-w-[70px]"
+                    >
+                      {value}
+                    </Button>
+                  ))}
+                </div>
               </div>
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Reps propres</label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={eCleanReps}
-                  onChange={(e) => setECleanReps(e.target.value)}
-                  placeholder="0"
-                  className="w-full"
-                />
+                <label className="text-xs text-gray-400 mb-2 block">Reps propres</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setECleanReps(Math.max(0, (parseInt(eCleanReps) || 0) - 1).toString())}
+                    className="w-10 h-10 flex items-center justify-center"
+                  >
+                    −
+                  </Button>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={eCleanReps}
+                    onChange={(e) => setECleanReps(e.target.value)}
+                    placeholder="0"
+                    className="flex-1 text-center text-lg font-semibold"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setECleanReps(((parseInt(eCleanReps) || 0) + 1).toString())}
+                    className="w-10 h-10 flex items-center justify-center"
+                  >
+                    +
+                  </Button>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {[5, 10, 15].map((value) => (
+                    <Button
+                      key={value}
+                      variant={parseInt(eCleanReps) === value ? "primary" : "secondary"}
+                      size="sm"
+                      onClick={() => setECleanReps(value.toString())}
+                      className="flex-1 min-w-[60px]"
+                    >
+                      {value}
+                    </Button>
+                  ))}
+                </div>
               </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleUpdatePalierE}
+                disabled={isUpdating}
+                className="w-full"
+              >
+                Mettre à jour
+              </Button>
             </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleUpdatePalierE}
-              disabled={isUpdating}
-              className="w-full"
-            >
-              Mettre à jour
-            </Button>
           </div>
 
           {/* Palier A */}
@@ -435,39 +529,102 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
               {pasProgress.paliersState.A.positionalTest.successes} /{" "}
               {pasProgress.paliersState.A.positionalTest.attempts})
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="space-y-3">
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Tentatives</label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={aAttempts}
-                  onChange={(e) => setAAttempts(e.target.value)}
-                  placeholder="0"
-                  className="w-full"
-                />
+                <label className="text-xs text-gray-400 mb-2 block">Tentatives</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setAAttempts(Math.max(0, (parseInt(aAttempts) || 0) - 1).toString())}
+                    className="w-10 h-10 flex items-center justify-center"
+                  >
+                    −
+                  </Button>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={aAttempts}
+                    onChange={(e) => setAAttempts(e.target.value)}
+                    placeholder="0"
+                    className="flex-1 text-center text-lg font-semibold"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setAAttempts(((parseInt(aAttempts) || 0) + 1).toString())}
+                    className="w-10 h-10 flex items-center justify-center"
+                  >
+                    +
+                  </Button>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {[5, 10, 20].map((value) => (
+                    <Button
+                      key={value}
+                      variant={parseInt(aAttempts) === value ? "primary" : "secondary"}
+                      size="sm"
+                      onClick={() => setAAttempts(value.toString())}
+                      className="flex-1 min-w-[60px]"
+                    >
+                      {value}
+                    </Button>
+                  ))}
+                </div>
               </div>
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Réussites</label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={aSuccesses}
-                  onChange={(e) => setASuccesses(e.target.value)}
-                  placeholder="0"
-                  className="w-full"
-                />
+                <label className="text-xs text-gray-400 mb-2 block">Réussites</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setASuccesses(Math.max(0, (parseInt(aSuccesses) || 0) - 1).toString())}
+                    className="w-10 h-10 flex items-center justify-center"
+                  >
+                    −
+                  </Button>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={aSuccesses}
+                    onChange={(e) => setASuccesses(e.target.value)}
+                    placeholder="0"
+                    className="flex-1 text-center text-lg font-semibold"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setASuccesses(Math.min(parseInt(aAttempts) || 0, (parseInt(aSuccesses) || 0) + 1).toString())}
+                    className="w-10 h-10 flex items-center justify-center"
+                  >
+                    +
+                  </Button>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {[2, 5, 10].map((value) => (
+                    <Button
+                      key={value}
+                      variant={parseInt(aSuccesses) === value ? "primary" : "secondary"}
+                      size="sm"
+                      onClick={() => setASuccesses(Math.min(parseInt(aAttempts) || 0, value).toString())}
+                      className="flex-1 min-w-[60px]"
+                      disabled={value > (parseInt(aAttempts) || 0)}
+                    >
+                      {value}
+                    </Button>
+                  ))}
+                </div>
               </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleUpdatePalierA}
+                disabled={isUpdating}
+                className="w-full"
+              >
+                Mettre à jour
+              </Button>
             </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleUpdatePalierA}
-              disabled={isUpdating}
-              className="w-full"
-            >
-              Mettre à jour
-            </Button>
           </div>
 
           {/* Palier I */}
@@ -501,20 +658,52 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
               {new Set(pasProgress.paliersState.I.freeSparringTest.sessions).size} /
               {pasProgress.paliersState.I.sessionsRequired}
             </div>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min="0"
-                value={iOccurrences}
-                onChange={(e) => setIOccurrences(e.target.value)}
-                placeholder="Occurrences"
-                className="flex-1"
-              />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIOccurrences(Math.max(0, (parseInt(iOccurrences) || 0) - 1).toString())}
+                  className="w-10 h-10 flex items-center justify-center"
+                >
+                  −
+                </Button>
+                <Input
+                  type="number"
+                  min="0"
+                  value={iOccurrences}
+                  onChange={(e) => setIOccurrences(e.target.value)}
+                  placeholder="Occurrences"
+                  className="flex-1 text-center text-lg font-semibold"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIOccurrences(((parseInt(iOccurrences) || 0) + 1).toString())}
+                  className="w-10 h-10 flex items-center justify-center"
+                >
+                  +
+                </Button>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {[1, 2, 3].map((value) => (
+                  <Button
+                    key={value}
+                    variant={parseInt(iOccurrences) === value ? "primary" : "secondary"}
+                    size="sm"
+                    onClick={() => setIOccurrences(value.toString())}
+                    className="flex-1 min-w-[60px]"
+                  >
+                    {value}
+                  </Button>
+                ))}
+              </div>
               <Button
-                variant="secondary"
+                variant="primary"
                 size="sm"
                 onClick={handleUpdatePalierI}
                 disabled={isUpdating}
+                className="w-full"
               >
                 Mettre à jour
               </Button>
