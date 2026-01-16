@@ -1,5 +1,7 @@
 "use client";
 
+/// <reference path="../types/speech-recognition.d.ts" />
+
 import { useState, useEffect, useRef, useCallback } from "react";
 
 interface UseSpeechRecognitionOptions {
