@@ -600,14 +600,14 @@ export async function POST(request: NextRequest) {
           if (lastAssistant?.tool_calls) {
             const toolCallIds = lastAssistant.tool_calls.map((tc: any) => tc.id);
             const toolResponseIds = toolResponses.map((tr: any) => tr.tool_call_id);
-            const orderMatches = toolCallIds.every((id, idx) => id === toolResponseIds[idx]);
+            const orderMatches = toolCallIds.every((id: string | undefined, idx: number) => id === toolResponseIds[idx]);
             if (!orderMatches) {
               console.error(
                 `[Coach API] ⚠️ Ordre des tool responses ne correspond pas aux tool calls:`,
                 {
                   toolCallIds,
                   toolResponseIds,
-                  matches: toolCallIds.map((id, idx) => id === toolResponseIds[idx]),
+                  matches: toolCallIds.map((id: string | undefined, idx: number) => id === toolResponseIds[idx]),
                 }
               );
             } else {
@@ -652,7 +652,7 @@ export async function POST(request: NextRequest) {
               {
                 received: receivedIds,
                 sent: sentIds,
-                match: receivedIds.map((id, idx) => ({
+                match: receivedIds.map((id: string, idx: number) => ({
                   received: id,
                   sent: sentIds[idx],
                   matches: id === sentIds[idx],
@@ -677,14 +677,14 @@ export async function POST(request: NextRequest) {
             // Vérifier la correspondance des IDs
             const receivedIds = toolCalls.map((tc: any) => tc.id || "MISSING");
             const sentIds = toolMessages.map((m: any) => m.tool_call_id || "MISSING");
-            const allMatch = receivedIds.every((id, idx) => id === sentIds[idx]);
+            const allMatch = receivedIds.every((id: string, idx: number) => id === sentIds[idx]);
             if (!allMatch) {
               console.error(
                 `[Coach API] ⚠️ IDs ne correspondent pas exactement:`,
                 {
                   received: receivedIds,
                   sent: sentIds,
-                  matches: receivedIds.map((id, idx) => id === sentIds[idx]),
+                  matches: receivedIds.map((id: string, idx: number) => id === sentIds[idx]),
                 }
               );
             } else {
