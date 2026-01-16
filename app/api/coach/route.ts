@@ -240,14 +240,8 @@ export async function POST(request: NextRequest) {
           const assistantMessageWithTools: any = {
             role: "assistant",
             tool_calls: toolCalls,
+            content: null, // Toujours null quand tool_calls est présent (selon docs Mistral)
           };
-          // Ne pas inclure content si tool_calls est présent (selon docs Mistral)
-          if (!assistantMessage.content || assistantMessage.content.trim() === "") {
-            assistantMessageWithTools.content = null;
-          } else {
-            // Si content existe, on peut le garder mais c'est mieux de le mettre à null
-            assistantMessageWithTools.content = null;
-          }
           messages.push(assistantMessageWithTools);
 
           // Compteur pour vérifier que chaque tool call reçoit une réponse
