@@ -14,6 +14,7 @@ import {
   computeCycleProgress,
 } from "@/lib/progression/compute";
 import { Timeline } from "@/components/progression/Timeline";
+import { SwipeCard } from "@/components/progression/SwipeCard";
 import { GamificationHeader } from "@/components/progression/GamificationHeader";
 import { BadgesGrid } from "@/components/progression/BadgesGrid";
 import { Quests } from "@/components/progression/Quests";
@@ -155,11 +156,14 @@ export default function ProgressionPage() {
 
       {/* Liste */}
       {viewMode === "list" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-4">
           {pasWithProgress.map((pas) => (
-            <div key={pas.id}>
-              {/* Utiliser SwipeCard ou un composant de liste simplifié */}
-            </div>
+            <SwipeCard
+              key={pas.id}
+              pas={pas}
+              onSwipeShort={handleSwipeShort}
+              onSwipeLong={handleSwipeLong}
+            />
           ))}
         </div>
       )}
