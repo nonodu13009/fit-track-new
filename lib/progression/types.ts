@@ -74,8 +74,13 @@ export interface Paliers {
 // Critères de validation par type de pas
 // ============================================================================
 
+export interface Checkpoint {
+  label: string;
+  explanation?: string;
+}
+
 export interface ValidationCriteria {
-  checkpoints: string[]; // 3-5 items required
+  checkpoints: Checkpoint[]; // 3-5 items required
   volumeMin: number; // ex: 50 reps
   positionalTest: {
     attempts: number; // ex: 10
@@ -102,7 +107,7 @@ export interface Pas {
   title: string;
   objectives: string[];
   type: PasType;
-  checkpoints: string[]; // Remplace checklist
+  checkpoints: Checkpoint[]; // Remplace checklist, avec explications optionnelles
   paliers: Paliers;
   validationCriteria: ValidationCriteria;
   prerequisites?: string[]; // pasIds requis

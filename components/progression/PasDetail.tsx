@@ -272,23 +272,65 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
 
         {/* Checkpoints */}
         <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-2">Checkpoints</h2>
-          <ul className="space-y-2">
-            {pas.checkpoints.map((checkpoint, idx) => (
-              <li key={idx} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={
-                    pasProgress.paliersState.K.status === "completed" ||
-                    pasProgress.paliersState.E.status === "completed"
-                  }
-                  disabled
-                  className="w-4 h-4 rounded border-white/20 bg-surface"
-                />
-                <span className="text-gray-300">{checkpoint}</span>
-              </li>
-            ))}
-          </ul>
+          <h2 className="text-lg font-semibold mb-2">Keypoints</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            Points clés à vérifier lors de l&apos;exécution
+          </p>
+          <div className="space-y-2">
+            {pas.checkpoints.map((checkpoint, idx) => {
+              const isChecked =
+                pasProgress.paliersState.K.status === "completed" ||
+                pasProgress.paliersState.E.status === "completed";
+              return (
+                <div
+                  key={idx}
+                  className={`flex items-start gap-3 p-3 rounded-lg border ${
+                    isChecked
+                      ? "bg-green-500/10 border-green-500/30"
+                      : "bg-surface/50 border-white/10"
+                  }`}
+                >
+                  <div
+                    className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5 ${
+                      isChecked
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-600 border-2 border-gray-500"
+                    }`}
+                  >
+                    {isChecked && (
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={3}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <span
+                      className={`text-sm ${
+                        isChecked ? "text-gray-200" : "text-gray-400"
+                      }`}
+                    >
+                      {checkpoint.label}
+                    </span>
+                    {checkpoint.explanation && (
+                      <p className="text-xs text-gray-500 italic mt-1">
+                        {checkpoint.explanation}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Paliers */}

@@ -3,7 +3,12 @@
  * 64 semaines réparties en 4 cycles de 16 semaines
  */
 
-import { Pas, Paliers, ValidationCriteria, PasType } from "./types";
+import { Pas, Paliers, ValidationCriteria, PasType, Checkpoint } from "./types";
+
+// Helper pour créer un checkpoint
+function createCheckpoint(label: string, explanation?: string): Checkpoint {
+  return { label, explanation };
+}
 
 // Helper pour créer des paliers initiaux
 function createInitialPaliers(): Paliers {
@@ -73,7 +78,7 @@ function createPas(
   title: string,
   objectives: string[],
   type: PasType,
-  checkpoints: string[],
+  checkpoints: Checkpoint[],
   validationCriteria: ValidationCriteria,
   prerequisites?: string[]
 ): Pas {
@@ -110,9 +115,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Se déplacer efficacement au sol"],
     "fondamental",
     [
-      "Hanches relevées",
-      "Jambe poussée correctement",
-      "Déplacement fluide des deux côtés",
+      createCheckpoint("Hanches relevées"),
+      createCheckpoint("Jambe poussée correctement"),
+      createCheckpoint("Déplacement fluide des deux côtés"),
     ],
     createValidationCriteria("fondamental", 100, 0, 0),
     undefined
@@ -126,9 +131,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Renforcer et utiliser le pont"],
     "fondamental",
     [
-      "Appui sur tête/épaules",
-      "Bridge latéral (rondade)",
-      "Bridge avec rotation",
+      createCheckpoint("Appui sur tête/épaules"),
+      createCheckpoint("Bridge latéral (rondade)"),
+      createCheckpoint("Bridge avec rotation"),
     ],
     createValidationCriteria("fondamental", 100, 0, 0),
     ["pas-01-01"]
@@ -142,9 +147,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Se relever en sécurité"],
     "fondamental",
     [
-      "Posture correcte",
-      "Protection de la tête",
-      "Relevé fluide",
+      createCheckpoint("Posture correcte"),
+      createCheckpoint("Protection de la tête"),
+      createCheckpoint("Relevé fluide"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-01-02"]
@@ -158,9 +163,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Créer de l'espace avec les frames"],
     "fondamental",
     [
-      "Frames en place avant mouvement",
-      "Distance créée",
-      "Posture défensive maintenue",
+      createCheckpoint("Frames en place avant mouvement"),
+      createCheckpoint("Distance créée"),
+      createCheckpoint("Posture défensive maintenue"),
     ],
     createValidationCriteria("fondamental", 100, 0, 0),
     ["pas-01-03"]
@@ -174,8 +179,8 @@ const CYCLE_1_PAS: Pas[] = [
     ["Contrôler la distance avec l'adversaire"],
     "fondamental",
     [
-      "Distance appropriée maintenue",
-      "Ajustements selon situation",
+      createCheckpoint("Distance appropriée maintenue"),
+      createCheckpoint("Ajustements selon situation"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-01-04"]
@@ -189,9 +194,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Échapper du side control"],
     "escape",
     [
-      "Frames en place avant de pousser",
-      "Shrimping correct (hanches, espace)",
-      "Récupération garde stable",
+      createCheckpoint("Frames en place avant de pousser"),
+      createCheckpoint("Shrimping correct (hanches, espace)"),
+      createCheckpoint("Récupération garde stable"),
     ],
     createValidationCriteria("escape", 50, 10, 50),
     ["pas-01-05"]
@@ -205,9 +210,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Alternative d'escape du side control"],
     "escape",
     [
-      "Technique alternative maîtrisée",
-      "Transition fluide",
-      "Pas de re-collage immédiat",
+      createCheckpoint("Technique alternative maîtrisée"),
+      createCheckpoint("Transition fluide"),
+      createCheckpoint("Pas de re-collage immédiat"),
     ],
     createValidationCriteria("escape", 50, 10, 50),
     ["pas-01-06"]
@@ -221,9 +226,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Échapper de la montée"],
     "escape",
     [
-      "Frames en place avant de pousser",
-      "Hips escape / bridge au bon timing",
-      "Re-guard ou sortie stable",
+      createCheckpoint("Frames en place avant de pousser"),
+      createCheckpoint("Hips escape / bridge au bon timing"),
+      createCheckpoint("Re-guard ou sortie stable"),
     ],
     createValidationCriteria("escape", 50, 10, 50),
     ["pas-01-07"]
@@ -237,9 +242,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Alternative d'escape de la montée"],
     "escape",
     [
-      "Technique alternative maîtrisée",
-      "Timing correct",
-      "Stabilité après escape",
+      createCheckpoint("Technique alternative maîtrisée"),
+      createCheckpoint("Timing correct"),
+      createCheckpoint("Stabilité après escape"),
     ],
     createValidationCriteria("escape", 50, 10, 50),
     ["pas-01-08"]
@@ -255,9 +260,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Casser la posture en garde fermée"],
     "fondamental",
     [
-      "Grip correct",
-      "Mouvement efficace",
-      "Posture cassée",
+      createCheckpoint("Grip correct"),
+      createCheckpoint("Mouvement efficace"),
+      createCheckpoint("Posture cassée"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-01-09"]
@@ -271,8 +276,8 @@ const CYCLE_1_PAS: Pas[] = [
     ["Alternative pour casser la posture"],
     "fondamental",
     [
-      "Technique alternative",
-      "Efficacité démontrée",
+      createCheckpoint("Technique alternative"),
+      createCheckpoint("Efficacité démontrée"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-01-10"]
@@ -286,9 +291,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Exécuter le balayage ciseaux"],
     "sweep",
     [
-      "Setup correct (manche + genou)",
-      "Exécution du sweep (ciseaux + rotation)",
-      "Stabilisation 3 sec après sweep",
+      createCheckpoint("Setup correct (manche + genou)"),
+      createCheckpoint("Exécution du sweep (ciseaux + rotation)"),
+      createCheckpoint("Stabilisation 3 sec après sweep"),
     ],
     createValidationCriteria("sweep", 50, 10, 40),
     ["pas-01-11"]
@@ -302,9 +307,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Exécuter le hip bump sweep"],
     "sweep",
     [
-      "Setup correct (manche + hanche)",
-      "Exécution (bump + rotation)",
-      "Stabilisation 3 sec après sweep",
+      createCheckpoint("Setup correct (manche + hanche)"),
+      createCheckpoint("Exécution (bump + rotation)"),
+      createCheckpoint("Stabilisation 3 sec après sweep"),
     ],
     createValidationCriteria("sweep", 50, 10, 40),
     ["pas-01-12"]
@@ -318,9 +323,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Exécuter la clé de bras"],
     "soumission",
     [
-      "Setup correct (bras, position)",
-      "Exécution armbar (technique propre)",
-      "Cycle contrôle → setup → finition",
+      createCheckpoint("Setup correct (bras, position)"),
+      createCheckpoint("Exécution armbar (technique propre)"),
+      createCheckpoint("Cycle contrôle → setup → finition"),
     ],
     createValidationCriteria("soumission", 30, 10, 30),
     ["pas-01-13"]
@@ -334,9 +339,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Exécuter le triangle choke"],
     "soumission",
     [
-      "Setup correct",
-      "Exécution triangle (technique propre)",
-      "Cycle contrôle → setup → finition",
+      createCheckpoint("Setup correct"),
+      createCheckpoint("Exécution triangle (technique propre)"),
+      createCheckpoint("Cycle contrôle → setup → finition"),
     ],
     createValidationCriteria("soumission", 30, 10, 30),
     ["pas-01-14"]
@@ -350,9 +355,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Récupérer la garde depuis positions défavorables"],
     "fondamental",
     [
-      "Transition fluide",
-      "Garde récupérée stable",
-      "Contrôle maintenu",
+      createCheckpoint("Transition fluide"),
+      createCheckpoint("Garde récupérée stable"),
+      createCheckpoint("Contrôle maintenu"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-01-15"]
@@ -368,9 +373,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Survivre en demi-garde"],
     "fondamental",
     [
-      "Knee shield en place",
-      "Frames correctes",
-      "Stabilité maintenue",
+      createCheckpoint("Knee shield en place"),
+      createCheckpoint("Frames correctes"),
+      createCheckpoint("Stabilité maintenue"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-01-16"]
@@ -384,9 +389,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Récupérer la garde complète depuis demi-garde"],
     "fondamental",
     [
-      "Transition fluide",
-      "Garde complète récupérée",
-      "Contrôle établi",
+      createCheckpoint("Transition fluide"),
+      createCheckpoint("Garde complète récupérée"),
+      createCheckpoint("Contrôle établi"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-01-17"]
@@ -400,9 +405,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Exécuter un sweep depuis demi-garde"],
     "sweep",
     [
-      "Setup correct",
-      "Exécution du sweep",
-      "Stabilisation 3 sec",
+      createCheckpoint("Setup correct"),
+      createCheckpoint("Exécution du sweep"),
+      createCheckpoint("Stabilisation 3 sec"),
     ],
     createValidationCriteria("sweep", 50, 10, 40),
     ["pas-01-18"]
@@ -416,9 +421,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Passer la garde ouverte"],
     "passage",
     [
-      "Setup correct (manches + contrôle jambes)",
-      "Exécution du pass (torreando)",
-      "Stabilisation 3 sec en side control",
+      createCheckpoint("Setup correct (manches + contrôle jambes)"),
+      createCheckpoint("Exécution du pass (torreando)"),
+      createCheckpoint("Stabilisation 3 sec en side control"),
     ],
     createValidationCriteria("passage", 50, 10, 30),
     ["pas-01-19"]
@@ -432,9 +437,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Passer la garde fermée"],
     "passage",
     [
-      "Setup correct (manche + genou)",
-      "Exécution du pass (coupe genou)",
-      "Stabilisation 3 sec en side control",
+      createCheckpoint("Setup correct (manche + genou)"),
+      createCheckpoint("Exécution du pass (coupe genou)"),
+      createCheckpoint("Stabilisation 3 sec en side control"),
     ],
     createValidationCriteria("passage", 50, 10, 30),
     ["pas-01-20"]
@@ -448,9 +453,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Maintenir la position latérale"],
     "contrôle",
     [
-      "Position de base (poids, contrôle)",
-      "Contrôle des hanches et épaules",
-      "Maintien 10 secondes contre résistance",
+      createCheckpoint("Position de base (poids, contrôle)"),
+      createCheckpoint("Contrôle des hanches et épaules"),
+      createCheckpoint("Maintien 10 secondes contre résistance"),
     ],
     createValidationCriteria("contrôle", 0, 5, 10), // holdTime = 10s
     ["pas-01-21"]
@@ -466,9 +471,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Monter en mount depuis side control"],
     "contrôle",
     [
-      "Transition fluide",
-      "Mount stable",
-      "Contrôle maintenu",
+      createCheckpoint("Transition fluide"),
+      createCheckpoint("Mount stable"),
+      createCheckpoint("Contrôle maintenu"),
     ],
     createValidationCriteria("contrôle", 0, 5, 10),
     ["pas-01-22"]
@@ -482,9 +487,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Contrôler la montée et attaquer"],
     "contrôle",
     [
-      "Position de base (genoux, équilibre)",
-      "Contrôle des bras adversaire",
-      "Maintien 10 secondes + 1 chaîne d'attaque",
+      createCheckpoint("Position de base (genoux, équilibre)"),
+      createCheckpoint("Contrôle des bras adversaire"),
+      createCheckpoint("Maintien 10 secondes + 1 chaîne d'attaque"),
     ],
     createValidationCriteria("contrôle", 0, 5, 10),
     ["pas-01-23"]
@@ -498,9 +503,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Contrôler le dos"],
     "contrôle",
     [
-      "Position de base (crochets, contrôle)",
-      "Contrôle des bras adversaire",
-      "Maintien 10 secondes + empêcher 1 escape",
+      createCheckpoint("Position de base (crochets, contrôle)"),
+      createCheckpoint("Contrôle des bras adversaire"),
+      createCheckpoint("Maintien 10 secondes + empêcher 1 escape"),
     ],
     createValidationCriteria("contrôle", 0, 5, 10),
     ["pas-01-24"]
@@ -514,9 +519,9 @@ const CYCLE_1_PAS: Pas[] = [
     ["Exécuter l'étranglement croisé avec Gi"],
     "soumission",
     [
-      "Setup correct (collets croisés)",
-      "Exécution du choke (technique propre)",
-      "Cycle contrôle → setup → finition",
+      createCheckpoint("Setup correct (collets croisés)"),
+      createCheckpoint("Exécution du choke (technique propre)"),
+      createCheckpoint("Cycle contrôle → setup → finition"),
     ],
     createValidationCriteria("soumission", 30, 10, 30),
     ["pas-01-25"]
@@ -538,9 +543,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Entrer en collar-sleeve"],
     "fondamental",
     [
-      "Grips corrects (collet + manche)",
-      "Position de base",
-      "Contrôle distance",
+      createCheckpoint("Grips corrects (collet + manche)"),
+      createCheckpoint("Position de base"),
+      createCheckpoint("Contrôle distance"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-01-26"]
@@ -554,9 +559,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Exécuter un sweep depuis collar-sleeve"],
     "sweep",
     [
-      "Setup depuis collar-sleeve",
-      "Exécution du sweep",
-      "Stabilisation 3 sec",
+      createCheckpoint("Setup depuis collar-sleeve"),
+      createCheckpoint("Exécution du sweep"),
+      createCheckpoint("Stabilisation 3 sec"),
     ],
     createValidationCriteria("sweep", 50, 10, 40),
     ["pas-02-01"]
@@ -570,8 +575,8 @@ const CYCLE_2_PAS: Pas[] = [
     ["Alternative de sweep depuis collar-sleeve"],
     "sweep",
     [
-      "Sweep alternatif maîtrisé",
-      "Stabilisation 3 sec",
+      createCheckpoint("Sweep alternatif maîtrisé"),
+      createCheckpoint("Stabilisation 3 sec"),
     ],
     createValidationCriteria("sweep", 50, 10, 40),
     ["pas-02-02"]
@@ -585,9 +590,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Prendre le dos depuis collar-sleeve"],
     "fondamental",
     [
-      "Transition vers dos",
-      "Back control établi",
-      "Contrôle maintenu",
+      createCheckpoint("Transition vers dos"),
+      createCheckpoint("Back control établi"),
+      createCheckpoint("Contrôle maintenu"),
     ],
     createValidationCriteria("fondamental", 30, 10, 40),
     ["pas-02-03"]
@@ -601,8 +606,8 @@ const CYCLE_2_PAS: Pas[] = [
     ["Récupérer la garde quand on tente de passer"],
     "fondamental",
     [
-      "Récupération efficace",
-      "Garde rétablie",
+      createCheckpoint("Récupération efficace"),
+      createCheckpoint("Garde rétablie"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-02-04"]
@@ -616,8 +621,8 @@ const CYCLE_2_PAS: Pas[] = [
     ["Alternative de récupération"],
     "fondamental",
     [
-      "Technique alternative",
-      "Efficacité démontrée",
+      createCheckpoint("Technique alternative"),
+      createCheckpoint("Efficacité démontrée"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-02-05"]
@@ -633,9 +638,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Entrer en De La Riva"],
     "fondamental",
     [
-      "Position DLR correcte",
-      "Grips appropriés",
-      "Contrôle distance",
+      createCheckpoint("Position DLR correcte"),
+      createCheckpoint("Grips appropriés"),
+      createCheckpoint("Contrôle distance"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-02-06"]
@@ -649,8 +654,8 @@ const CYCLE_2_PAS: Pas[] = [
     ["Déséquilibrer depuis DLR"],
     "fondamental",
     [
-      "Off-balance efficace",
-      "Adversaire déséquilibré",
+      createCheckpoint("Off-balance efficace"),
+      createCheckpoint("Adversaire déséquilibré"),
     ],
     createValidationCriteria("fondamental", 50, 0, 0),
     ["pas-02-07"]
@@ -664,9 +669,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Exécuter un sweep depuis DLR"],
     "sweep",
     [
-      "Setup depuis DLR",
-      "Exécution du sweep",
-      "Stabilisation 3 sec",
+      createCheckpoint("Setup depuis DLR"),
+      createCheckpoint("Exécution du sweep"),
+      createCheckpoint("Stabilisation 3 sec"),
     ],
     createValidationCriteria("sweep", 50, 10, 40),
     ["pas-02-08"]
@@ -680,9 +685,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Transitions fluides vers top"],
     "fondamental",
     [
-      "Transition garde → top",
-      "Stabilisation (points)",
-      "Contrôle maintenu",
+      createCheckpoint("Transition garde → top"),
+      createCheckpoint("Stabilisation (points)"),
+      createCheckpoint("Contrôle maintenu"),
     ],
     createValidationCriteria("fondamental", 30, 10, 40),
     ["pas-02-09"]
@@ -698,9 +703,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Variations de knee cut"],
     "passage",
     [
-      "Variations maîtrisées",
-      "Adaptation selon situation",
-      "Stabilisation 3 sec",
+      createCheckpoint("Variations maîtrisées"),
+      createCheckpoint("Adaptation selon situation"),
+      createCheckpoint("Stabilisation 3 sec"),
     ],
     createValidationCriteria("passage", 50, 10, 30),
     ["pas-02-10"]
@@ -714,9 +719,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Finir le passage et répondre aux défenses"],
     "passage",
     [
-      "Finitions après passage",
-      "Réponse au knee shield",
-      "Stabilisation",
+      createCheckpoint("Finitions après passage"),
+      createCheckpoint("Réponse au knee shield"),
+      createCheckpoint("Stabilisation"),
     ],
     createValidationCriteria("passage", 50, 10, 30),
     ["pas-02-11"]
@@ -730,9 +735,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Passer avec pression over/under"],
     "passage",
     [
-      "Setup correct",
-      "Exécution avec pression",
-      "Stabilisation 3 sec",
+      createCheckpoint("Setup correct"),
+      createCheckpoint("Exécution avec pression"),
+      createCheckpoint("Stabilisation 3 sec"),
     ],
     createValidationCriteria("passage", 50, 10, 30),
     ["pas-02-12"]
@@ -746,9 +751,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Enchaîner passage → contrôle → mount"],
     "contrôle",
     [
-      "Passage réussi",
-      "Side control stabilisé",
-      "Transition vers mount",
+      createCheckpoint("Passage réussi"),
+      createCheckpoint("Side control stabilisé"),
+      createCheckpoint("Transition vers mount"),
     ],
     createValidationCriteria("contrôle", 0, 5, 10),
     ["pas-02-13"]
@@ -764,9 +769,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Contrôler en turtle et prendre le dos"],
     "contrôle",
     [
-      "Contrôle en turtle",
-      "Prise de dos safe",
-      "Back control établi",
+      createCheckpoint("Contrôle en turtle"),
+      createCheckpoint("Prise de dos safe"),
+      createCheckpoint("Back control établi"),
     ],
     createValidationCriteria("contrôle", 0, 5, 10),
     ["pas-02-14"]
@@ -780,9 +785,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Récupérer le dos si perdu"],
     "contrôle",
     [
-      "Recapture efficace",
-      "Back control rétabli",
-      "Maintien 10 sec",
+      createCheckpoint("Recapture efficace"),
+      createCheckpoint("Back control rétabli"),
+      createCheckpoint("Maintien 10 sec"),
     ],
     createValidationCriteria("contrôle", 0, 5, 10),
     ["pas-02-15"]
@@ -796,9 +801,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Exécuter le bow and arrow choke"],
     "soumission",
     [
-      "Setup correct (collet + jambe)",
-      "Exécution du choke (technique propre)",
-      "Cycle contrôle → setup → finition",
+      createCheckpoint("Setup correct (collet + jambe)"),
+      createCheckpoint("Exécution du choke (technique propre)"),
+      createCheckpoint("Cycle contrôle → setup → finition"),
     ],
     createValidationCriteria("soumission", 30, 10, 30),
     ["pas-02-16"]
@@ -812,9 +817,9 @@ const CYCLE_2_PAS: Pas[] = [
     ["Prévenir et échapper de la prise de dos"],
     "escape",
     [
-      "Prévention efficace",
-      "Escape back solide",
-      "Sortie stable",
+      createCheckpoint("Prévention efficace"),
+      createCheckpoint("Escape back solide"),
+      createCheckpoint("Sortie stable"),
     ],
     createValidationCriteria("escape", 50, 10, 50),
     ["pas-02-17"]
@@ -836,9 +841,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Choisir et développer son système de garde principal"],
     "fondamental",
     [
-      "Système choisi (collar-sleeve OU DLR)",
-      "Compréhension approfondie",
-      "Chaînes identifiées",
+      createCheckpoint("Système choisi (collar-sleeve OU DLR)"),
+      createCheckpoint("Compréhension approfondie"),
+      createCheckpoint("Chaînes identifiées"),
     ],
     createValidationCriteria("fondamental", 0, 0, 0),
     ["pas-02-18"]
@@ -852,9 +857,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Construire une chaîne complète depuis la garde"],
     "sweep",
     [
-      "Chaîne complète maîtrisée",
-      "Enchaînement fluide",
-      "Finition ou contrôle",
+      createCheckpoint("Chaîne complète maîtrisée"),
+      createCheckpoint("Enchaînement fluide"),
+      createCheckpoint("Finition ou contrôle"),
     ],
     createValidationCriteria("sweep", 30, 10, 40),
     ["pas-03-01"]
@@ -868,9 +873,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Développer une deuxième chaîne depuis la garde"],
     "sweep",
     [
-      "Chaîne alternative maîtrisée",
-      "Adaptation selon situation",
-      "Efficacité démontrée",
+      createCheckpoint("Chaîne alternative maîtrisée"),
+      createCheckpoint("Adaptation selon situation"),
+      createCheckpoint("Efficacité démontrée"),
     ],
     createValidationCriteria("sweep", 30, 10, 40),
     ["pas-03-02"]
@@ -886,9 +891,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Choisir son angle et type de pression de passage"],
     "passage",
     [
-      "Angle choisi",
-      "Type de pression choisi",
-      "Compréhension approfondie",
+      createCheckpoint("Angle choisi"),
+      createCheckpoint("Type de pression choisi"),
+      createCheckpoint("Compréhension approfondie"),
     ],
     createValidationCriteria("passage", 0, 0, 0),
     ["pas-03-03"]
@@ -902,9 +907,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Construire une chaîne complète de passage"],
     "passage",
     [
-      "Chaîne complète maîtrisée",
-      "Enchaînement fluide",
-      "Mount ou dos établi",
+      createCheckpoint("Chaîne complète maîtrisée"),
+      createCheckpoint("Enchaînement fluide"),
+      createCheckpoint("Mount ou dos établi"),
     ],
     createValidationCriteria("passage", 30, 10, 30),
     ["pas-03-04"]
@@ -918,9 +923,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Développer une deuxième chaîne de passage"],
     "passage",
     [
-      "Chaîne alternative maîtrisée",
-      "Adaptation selon situation",
-      "Efficacité démontrée",
+      createCheckpoint("Chaîne alternative maîtrisée"),
+      createCheckpoint("Adaptation selon situation"),
+      createCheckpoint("Efficacité démontrée"),
     ],
     createValidationCriteria("passage", 30, 10, 30),
     ["pas-03-05"]
@@ -936,9 +941,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Défendre contre les passages rapides"],
     "fondamental",
     [
-      "Reconnaissance du passage rapide",
-      "Défense appropriée",
-      "Récupération garde",
+      createCheckpoint("Reconnaissance du passage rapide"),
+      createCheckpoint("Défense appropriée"),
+      createCheckpoint("Récupération garde"),
     ],
     createValidationCriteria("fondamental", 30, 10, 40),
     ["pas-03-06"]
@@ -952,9 +957,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Défendre contre les passages avec pression"],
     "fondamental",
     [
-      "Reconnaissance de la pression",
-      "Défense appropriée",
-      "Récupération garde",
+      createCheckpoint("Reconnaissance de la pression"),
+      createCheckpoint("Défense appropriée"),
+      createCheckpoint("Récupération garde"),
     ],
     createValidationCriteria("fondamental", 30, 10, 40),
     ["pas-03-07"]
@@ -968,9 +973,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Défendre contre les grips dominants"],
     "fondamental",
     [
-      "Reconnaissance des grips",
-      "Défense appropriée",
-      "Neutralisation",
+      createCheckpoint("Reconnaissance des grips"),
+      createCheckpoint("Défense appropriée"),
+      createCheckpoint("Neutralisation"),
     ],
     createValidationCriteria("fondamental", 30, 10, 40),
     ["pas-03-08"]
@@ -984,9 +989,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Sortir avant d'être collé/écrasé"],
     "escape",
     [
-      "Reconnaissance précoce",
-      "Sortie anticipée",
-      "Prévention efficace",
+      createCheckpoint("Reconnaissance précoce"),
+      createCheckpoint("Sortie anticipée"),
+      createCheckpoint("Prévention efficace"),
     ],
     createValidationCriteria("escape", 30, 10, 50),
     ["pas-03-09"]
@@ -1002,9 +1007,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Transitions fluides side → mount"],
     "contrôle",
     [
-      "Transition fluide",
-      "Mount stable",
-      "Contrôle maintenu",
+      createCheckpoint("Transition fluide"),
+      createCheckpoint("Mount stable"),
+      createCheckpoint("Contrôle maintenu"),
     ],
     createValidationCriteria("contrôle", 0, 5, 10),
     ["pas-03-10"]
@@ -1018,9 +1023,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Transitions fluides side → back"],
     "contrôle",
     [
-      "Transition fluide",
-      "Back control établi",
-      "Contrôle maintenu",
+      createCheckpoint("Transition fluide"),
+      createCheckpoint("Back control établi"),
+      createCheckpoint("Contrôle maintenu"),
     ],
     createValidationCriteria("contrôle", 0, 5, 10),
     ["pas-03-11"]
@@ -1034,9 +1039,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Transitions fluides mount → back"],
     "contrôle",
     [
-      "Transition fluide",
-      "Back control établi",
-      "Contrôle maintenu",
+      createCheckpoint("Transition fluide"),
+      createCheckpoint("Back control établi"),
+      createCheckpoint("Contrôle maintenu"),
     ],
     createValidationCriteria("contrôle", 0, 5, 10),
     ["pas-03-12"]
@@ -1050,9 +1055,9 @@ const CYCLE_3_PAS: Pas[] = [
     ["Gérer le tempo du match"],
     "fondamental",
     [
-      "Reconnaissance du moment",
-      "Accélération appropriée",
-      "Figement efficace",
+      createCheckpoint("Reconnaissance du moment"),
+      createCheckpoint("Accélération appropriée"),
+      createCheckpoint("Figement efficace"),
     ],
     createValidationCriteria("fondamental", 0, 10, 40),
     ["pas-03-13"]
@@ -1074,9 +1079,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Perfectionner les grips"],
     "fondamental",
     [
-      "Grips optimaux identifiés",
-      "Application correcte",
-      "Efficacité maximale",
+      createCheckpoint("Grips optimaux identifiés"),
+      createCheckpoint("Application correcte"),
+      createCheckpoint("Efficacité maximale"),
     ],
     createValidationCriteria("fondamental", 0, 0, 0),
     ["pas-03-14"]
@@ -1090,9 +1095,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Perfectionner les angles"],
     "fondamental",
     [
-      "Angles optimaux identifiés",
-      "Application correcte",
-      "Efficacité maximale",
+      createCheckpoint("Angles optimaux identifiés"),
+      createCheckpoint("Application correcte"),
+      createCheckpoint("Efficacité maximale"),
     ],
     createValidationCriteria("fondamental", 0, 0, 0),
     ["pas-04-01"]
@@ -1106,9 +1111,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Perfectionner le timing"],
     "fondamental",
     [
-      "Timing optimal identifié",
-      "Application correcte",
-      "Efficacité maximale",
+      createCheckpoint("Timing optimal identifié"),
+      createCheckpoint("Application correcte"),
+      createCheckpoint("Efficacité maximale"),
     ],
     createValidationCriteria("fondamental", 0, 0, 0),
     ["pas-04-02"]
@@ -1122,9 +1127,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Gérer le poids et la fatigue"],
     "fondamental",
     [
-      "Gestion du poids efficace",
-      "Gestion de la fatigue",
-      "Performance maintenue",
+      createCheckpoint("Gestion du poids efficace"),
+      createCheckpoint("Gestion de la fatigue"),
+      createCheckpoint("Performance maintenue"),
     ],
     createValidationCriteria("fondamental", 0, 0, 0),
     ["pas-04-03"]
@@ -1140,9 +1145,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Développer des réponses aux réponses"],
     "fondamental",
     [
-      "Contres identifiés",
-      "Réponses développées",
-      "Efficacité démontrée",
+      createCheckpoint("Contres identifiés"),
+      createCheckpoint("Réponses développées"),
+      createCheckpoint("Efficacité démontrée"),
     ],
     createValidationCriteria("fondamental", 0, 10, 40),
     ["pas-04-04"]
@@ -1158,9 +1163,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Développer une stratégie de match"],
     "fondamental",
     [
-      "Scénarios identifiés",
-      "Stratégies développées",
-      "Plan A + Plan B",
+      createCheckpoint("Scénarios identifiés"),
+      createCheckpoint("Stratégies développées"),
+      createCheckpoint("Plan A + Plan B"),
     ],
     createValidationCriteria("fondamental", 0, 0, 0),
     ["pas-04-05"]
@@ -1174,9 +1179,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Stratégie pour mener aux points"],
     "fondamental",
     [
-      "Stratégie claire",
-      "Application efficace",
-      "Points marqués",
+      createCheckpoint("Stratégie claire"),
+      createCheckpoint("Application efficace"),
+      createCheckpoint("Points marqués"),
     ],
     createValidationCriteria("fondamental", 0, 10, 40),
     ["pas-04-06"]
@@ -1190,9 +1195,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Stratégie pour remonter un score défavorable"],
     "fondamental",
     [
-      "Stratégie de remontée",
-      "Application efficace",
-      "Score amélioré",
+      createCheckpoint("Stratégie de remontée"),
+      createCheckpoint("Application efficace"),
+      createCheckpoint("Score amélioré"),
     ],
     createValidationCriteria("fondamental", 0, 10, 40),
     ["pas-04-07"]
@@ -1206,9 +1211,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Gérer la bordure et les grips en match"],
     "fondamental",
     [
-      "Gestion bordure efficace",
-      "Gestion grips appropriée",
-      "Stratégie adaptée",
+      createCheckpoint("Gestion bordure efficace"),
+      createCheckpoint("Gestion grips appropriée"),
+      createCheckpoint("Stratégie adaptée"),
     ],
     createValidationCriteria("fondamental", 0, 10, 40),
     ["pas-04-08"]
@@ -1224,9 +1229,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Maintenir les enchaînements sous fatigue"],
     "fondamental",
     [
-      "Techniques en fin de round",
-      "Gestion de l'énergie",
-      "Performance maintenue",
+      createCheckpoint("Techniques en fin de round"),
+      createCheckpoint("Gestion de l'énergie"),
+      createCheckpoint("Performance maintenue"),
     ],
     createValidationCriteria("fondamental", 0, 10, 40),
     ["pas-04-09"]
@@ -1240,9 +1245,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Sparring avec contraintes de match"],
     "fondamental",
     [
-      "Rounds chronométrés",
-      "Contraintes respectées",
-      "Performance match-like",
+      createCheckpoint("Rounds chronométrés"),
+      createCheckpoint("Contraintes respectées"),
+      createCheckpoint("Performance match-like"),
     ],
     createValidationCriteria("fondamental", 0, 10, 40),
     ["pas-04-10"]
@@ -1256,9 +1261,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Maintenir le niveau sous résistance"],
     "fondamental",
     [
-      "Résistance gérée",
-      "Performance maintenue",
-      "Robustesse démontrée",
+      createCheckpoint("Résistance gérée"),
+      createCheckpoint("Performance maintenue"),
+      createCheckpoint("Robustesse démontrée"),
     ],
     createValidationCriteria("fondamental", 0, 10, 40),
     ["pas-04-11"]
@@ -1272,9 +1277,9 @@ const CYCLE_4_PAS: Pas[] = [
     ["Savoir gagner un round sans soumettre"],
     "fondamental",
     [
-      "Contrôle efficace",
-      "Décisions appropriées",
-      "Victoire par points",
+      createCheckpoint("Contrôle efficace"),
+      createCheckpoint("Décisions appropriées"),
+      createCheckpoint("Victoire par points"),
     ],
     createValidationCriteria("fondamental", 0, 10, 40),
     ["pas-04-12"]
