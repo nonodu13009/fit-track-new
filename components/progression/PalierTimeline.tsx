@@ -290,22 +290,68 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
                   50 reps totales + 10 reps propres à vitesse normale
                 </p>
                 <div className="space-y-3">
-                  <Input
-                    type="number"
-                    min="0"
-                    value={eTotalReps}
-                    onChange={(e) => setETotalReps(e.target.value)}
-                    placeholder="0"
-                    label="Total reps"
-                  />
-                  <Input
-                    type="number"
-                    min="0"
-                    value={eCleanReps}
-                    onChange={(e) => setECleanReps(e.target.value)}
-                    placeholder="0"
-                    label="Reps propres"
-                  />
+                  <div>
+                    <label className="text-xs text-gray-400 mb-2 block">Total reps</label>
+                    {/* Boutons d'addition */}
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        onClick={() => {
+                          const current = parseInt(eTotalReps) || 0;
+                          setETotalReps((current + 10).toString());
+                        }}
+                        className="w-12 h-12 rounded-full bg-accent-purple/20 hover:bg-accent-purple/30 border border-accent-purple/50 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        +10
+                      </button>
+                      <button
+                        onClick={() => {
+                          const current = parseInt(eTotalReps) || 0;
+                          setETotalReps((current + 50).toString());
+                        }}
+                        className="w-12 h-12 rounded-full bg-accent-purple/20 hover:bg-accent-purple/30 border border-accent-purple/50 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        +50
+                      </button>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={eTotalReps}
+                      onChange={(e) => setETotalReps(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-2 block">Reps propres</label>
+                    {/* Boutons d'addition */}
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        onClick={() => {
+                          const current = parseInt(eCleanReps) || 0;
+                          setECleanReps((current + 10).toString());
+                        }}
+                        className="w-12 h-12 rounded-full bg-accent-purple/20 hover:bg-accent-purple/30 border border-accent-purple/50 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        +10
+                      </button>
+                      <button
+                        onClick={() => {
+                          const current = parseInt(eCleanReps) || 0;
+                          setECleanReps((current + 50).toString());
+                        }}
+                        className="w-12 h-12 rounded-full bg-accent-purple/20 hover:bg-accent-purple/30 border border-accent-purple/50 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        +50
+                      </button>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={eCleanReps}
+                      onChange={(e) => setECleanReps(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -316,22 +362,70 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
                   Positional sparring: ≥ {pasProgress.paliersState.A.targetRate}% de réussite
                 </p>
                 <div className="space-y-3">
-                  <Input
-                    type="number"
-                    min="0"
-                    value={aAttempts}
-                    onChange={(e) => setAAttempts(e.target.value)}
-                    placeholder="0"
-                    label="Tentatives"
-                  />
-                  <Input
-                    type="number"
-                    min="0"
-                    value={aSuccesses}
-                    onChange={(e) => setASuccesses(e.target.value)}
-                    placeholder="0"
-                    label="Réussites"
-                  />
+                  <div>
+                    <label className="text-xs text-gray-400 mb-2 block">Tentatives</label>
+                    {/* Boutons d'addition */}
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        onClick={() => {
+                          const current = parseInt(aAttempts) || 0;
+                          setAAttempts((current + 10).toString());
+                        }}
+                        className="w-12 h-12 rounded-full bg-accent-purple/20 hover:bg-accent-purple/30 border border-accent-purple/50 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        +10
+                      </button>
+                      <button
+                        onClick={() => {
+                          const current = parseInt(aAttempts) || 0;
+                          setAAttempts((current + 50).toString());
+                        }}
+                        className="w-12 h-12 rounded-full bg-accent-purple/20 hover:bg-accent-purple/30 border border-accent-purple/50 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        +50
+                      </button>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={aAttempts}
+                      onChange={(e) => setAAttempts(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-2 block">Réussites</label>
+                    {/* Boutons d'addition */}
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        onClick={() => {
+                          const current = parseInt(aSuccesses) || 0;
+                          const maxAttempts = parseInt(aAttempts) || 0;
+                          setASuccesses(Math.min(current + 10, maxAttempts).toString());
+                        }}
+                        className="w-12 h-12 rounded-full bg-accent-purple/20 hover:bg-accent-purple/30 border border-accent-purple/50 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        +10
+                      </button>
+                      <button
+                        onClick={() => {
+                          const current = parseInt(aSuccesses) || 0;
+                          const maxAttempts = parseInt(aAttempts) || 0;
+                          setASuccesses(Math.min(current + 50, maxAttempts).toString());
+                        }}
+                        className="w-12 h-12 rounded-full bg-accent-purple/20 hover:bg-accent-purple/30 border border-accent-purple/50 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        +50
+                      </button>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={aSuccesses}
+                      onChange={(e) => setASuccesses(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -343,14 +437,37 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
                   {pasProgress.paliersState.I.sessionsRequired} séances
                 </p>
                 <div className="space-y-3">
-                  <Input
-                    type="number"
-                    min="0"
-                    value={iOccurrences}
-                    onChange={(e) => setIOccurrences(e.target.value)}
-                    placeholder="Occurrences"
-                    label="Occurrences"
-                  />
+                  <div>
+                    <label className="text-xs text-gray-400 mb-2 block">Occurrences</label>
+                    {/* Boutons d'addition */}
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        onClick={() => {
+                          const current = parseInt(iOccurrences) || 0;
+                          setIOccurrences((current + 10).toString());
+                        }}
+                        className="w-12 h-12 rounded-full bg-accent-purple/20 hover:bg-accent-purple/30 border border-accent-purple/50 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        +10
+                      </button>
+                      <button
+                        onClick={() => {
+                          const current = parseInt(iOccurrences) || 0;
+                          setIOccurrences((current + 50).toString());
+                        }}
+                        className="w-12 h-12 rounded-full bg-accent-purple/20 hover:bg-accent-purple/30 border border-accent-purple/50 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        +50
+                      </button>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={iOccurrences}
+                      onChange={(e) => setIOccurrences(e.target.value)}
+                      placeholder="Occurrences"
+                    />
+                  </div>
                 </div>
               </>
             )}
