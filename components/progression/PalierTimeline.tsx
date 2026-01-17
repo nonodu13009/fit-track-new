@@ -117,22 +117,42 @@ export function PalierTimeline({ pas, pasProgress, onUpdate }: PalierTimelinePro
     setSelectedPalier(null);
   };
 
+  // Calculer le pourcentage de progression pour la ligne de connexion
+  const completedCount = paliers.filter((p) => p.status === "completed").length;
+  const progressionPercent = (completedCount / paliers.length) * 100;
+
   return (
     <div className="space-y-4">
         <h2 className="text-lg font-semibold mb-4">Paliers de validation</h2>
         
         {/* Timeline horizontale */}
-        <div className="relative flex items-center justify-between gap-2 py-4">
-          {/* Ligne de connexion */}
-          <div className="absolute left-14 right-14 top-7 h-0.5 bg-gray-700 -z-10" />
+        <div className="relative flex items-center justify-between gap-4 py-6 px-2">
+          {/* Ligne de connexion de fond (gris) - complète */}
+          <div className="absolute left-16 right-16 top-9 h-1 bg-gray-700/30 rounded-full -z-10" />
           
-          {paliers.map((palier, index) => (
+          {/* Ligne de progression (verte) qui s'étend selon les paliers complétés */}
+          {completedCount > 0 && (
+            <div 
+              className="absolute left-16 top-9 h-1 bg-gradient-to-r from-green-500 via-green-400 to-green-500 rounded-full -z-10 transition-all duration-700 ease-out shadow-lg shadow-green-500/30"
+              style={{ 
+                width: `calc(${progressionPercent}% - 4rem)`,
+                maxWidth: 'calc(100% - 8rem)'
+              }}
+            />
+          )}
+          
+          {paliers.map((palier, index) => {
+            const previousCompleted = index === 0 || paliers[index - 1].status === "completed";
+            const isCompleted = palier.status === "completed";
+            const isInProgress = palier.status === "in_progress";
+            
+            return (
             <div key={palier.key} className="relative flex-1 flex flex-col items-center z-10">
               
               {/* Nœud cliquable */}
               <button
                 onClick={() => handlePalierClick(palier.key)}
-                className={`relative w-14 h-14 rounded-full ${getPalierColor(palier.status)} ${getPalierRingColor(palier.status)} ring-4 transition-all hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer`}
+                className={`relative w-14 h-14 rounded-full ${getPalierColor(palier.status)} ${getPalierRingColor(palier.status)} ring-4 transition-all hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer shadow-lg`}
                 title={`${palier.label}: ${palier.description}`}
               >
                 {palier.status === "completed" ? (
@@ -180,7 +200,8 @@ export function PalierTimeline({ pas, pasProgress, onUpdate }: PalierTimelinePro
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Modal pour éditer un palier */}
