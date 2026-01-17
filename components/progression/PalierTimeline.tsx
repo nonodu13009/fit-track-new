@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
+import { Info } from "@phosphor-icons/react";
 import { Pas, PasProgress } from "@/lib/progression/types";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -254,9 +255,18 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
           <div className="space-y-4">
             {selectedPalier === "K" && (
               <>
-                <p className="text-sm text-gray-400 mb-4">
-                  10 répétitions propres d&apos;affilée (vitesse lente)
-                </p>
+                <div className="mb-4 p-3 bg-accent-cyan/10 border border-accent-cyan/30 rounded-lg">
+                  <div className="flex items-start gap-2 mb-2">
+                    <Info size={18} className="text-accent-cyan mt-0.5 flex-shrink-0" weight="fill" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white mb-1">Comment valider ce palier ?</p>
+                      <p className="text-xs text-gray-300 leading-relaxed">
+                        Le palier <strong>Connaissance</strong> valide que tu comprends la technique. Tu dois exécuter <strong>10 répétitions propres d&apos;affilée</strong> à vitesse lente, sans erreur majeure. 
+                        Les boutons (1, 5, 10) définissent directement le nombre de répétitions réussies.
+                      </p>
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-3">
                   <Input
                     type="number"
@@ -286,9 +296,22 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
 
             {selectedPalier === "E" && (
               <>
-                <p className="text-sm text-gray-400 mb-4">
-                  50 reps totales + 10 reps propres à vitesse normale
-                </p>
+                <div className="mb-4 p-3 bg-accent-purple/10 border border-accent-purple/30 rounded-lg">
+                  <div className="flex items-start gap-2 mb-2">
+                    <Info size={18} className="text-accent-purple mt-0.5 flex-shrink-0" weight="fill" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white mb-1">Comment valider ce palier ?</p>
+                      <p className="text-xs text-gray-300 leading-relaxed mb-2">
+                        Le palier <strong>Exécution</strong> valide que tu maîtrises la technique en mouvement normal contre un partenaire coopératif.
+                      </p>
+                      <ul className="text-xs text-gray-300 space-y-1 list-disc list-inside">
+                        <li><strong>Total reps</strong> : Clique sur +10 ou +50 pour additionner les répétitions effectuées (objectif : 50)</li>
+                        <li><strong>Reps propres</strong> : Clique sur +10 ou +50 pour additionner les répétitions sans erreur (objectif : 10)</li>
+                        <li>Les deux critères doivent être atteints pour valider</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs text-gray-400 mb-2 block">Total reps</label>
@@ -358,9 +381,23 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
 
             {selectedPalier === "A" && (
               <>
-                <p className="text-sm text-gray-400 mb-4">
-                  Positional sparring: ≥ {pasProgress.paliersState.A.targetRate}% de réussite
-                </p>
+                <div className="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                  <div className="flex items-start gap-2 mb-2">
+                    <Info size={18} className="text-green-400 mt-0.5 flex-shrink-0" weight="fill" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white mb-1">Comment valider ce palier ?</p>
+                      <p className="text-xs text-gray-300 leading-relaxed mb-2">
+                        Le palier <strong>Application</strong> valide que tu utilises la technique en <strong>positional sparring</strong> (situation d&apos;opposition contrôlée).
+                      </p>
+                      <ul className="text-xs text-gray-300 space-y-1 list-disc list-inside">
+                        <li><strong>Tentatives</strong> : Nombre de fois où tu as tenté la technique (clique sur +10 ou +50)</li>
+                        <li><strong>Réussites</strong> : Nombre de fois où la technique a fonctionné (clique sur +10 ou +50)</li>
+                        <li>Objectif : atteindre <strong>≥ {pasProgress.paliersState.A.targetRate}% de réussite</strong></li>
+                        <li>Exemple : 10 tentatives, 4 réussites = 40% ✓</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs text-gray-400 mb-2 block">Tentatives</label>
@@ -432,10 +469,22 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
 
             {selectedPalier === "I" && (
               <>
-                <p className="text-sm text-gray-400 mb-4">
-                  Sparring libre: ≥ {pasProgress.paliersState.I.occurrencesMin} occurrence(s) sur{" "}
-                  {pasProgress.paliersState.I.sessionsRequired} séances
-                </p>
+                <div className="mb-4 p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
+                  <div className="flex items-start gap-2 mb-2">
+                    <Info size={18} className="text-indigo-400 mt-0.5 flex-shrink-0" weight="fill" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white mb-1">Comment valider ce palier ?</p>
+                      <p className="text-xs text-gray-300 leading-relaxed mb-2">
+                        Le palier <strong>Intégration</strong> valide que la technique est devenue naturelle en <strong>sparring libre</strong> (situation réelle).
+                      </p>
+                      <ul className="text-xs text-gray-300 space-y-1 list-disc list-inside">
+                        <li><strong>Occurrences</strong> : Nombre de fois où tu as utilisé la technique avec succès en sparring libre (clique sur +10 ou +50)</li>
+                        <li>Objectif : <strong>≥ {pasProgress.paliersState.I.occurrencesMin} occurrence(s)</strong> sur <strong>{pasProgress.paliersState.I.sessionsRequired} séances différentes</strong></li>
+                        <li>Chaque occurrence doit être sur une séance différente pour valider</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs text-gray-400 mb-2 block">Occurrences</label>
