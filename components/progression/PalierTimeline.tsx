@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { AlertDialog } from "@/components/ui/AlertDialog";
+import { useAlertDialog } from "@/hooks/useAlertDialog";
 
 interface PalierTimelineProps {
   pas: Pas;
@@ -18,6 +20,7 @@ interface PalierTimelineProps {
 
 export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onResetAll }: PalierTimelineProps) {
   const [selectedPalier, setSelectedPalier] = useState<"K" | "E" | "A" | "I" | null>(null);
+  const { alertState, showAlert, closeAlert, confirmAlert } = useAlertDialog();
   const [kReps, setKReps] = useState(pasProgress.paliersState.K.repsCompleted.toString());
   const [eTotalReps, setETotalReps] = useState(pasProgress.paliersState.E.totalReps.toString());
   const [eCleanReps, setECleanReps] = useState(pasProgress.paliersState.E.cleanReps.toString());
@@ -131,10 +134,17 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
             <Button
               variant="danger"
               size="sm"
-              onClick={async () => {
-                if (confirm("Êtes-vous sûr de vouloir réinitialiser TOUS les paliers à zéro ? Cette action est irréversible.")) {
-                  await onResetAll();
-                }
+              onClick={() => {
+                showAlert(
+                  "Êtes-vous sûr de vouloir réinitialiser TOUS les paliers à zéro ? Cette action est irréversible.",
+                  async () => {
+                    await onResetAll();
+                  },
+                  {
+                    title: "Reset global",
+                    variant: "danger",
+                  }
+                );
               }}
               className="text-xs"
             >
@@ -342,10 +352,19 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
                 <Button
                   variant="danger"
                   size="sm"
-                  onClick={async () => {
-                    if (selectedPalier && confirm(`Êtes-vous sûr de vouloir réinitialiser le palier ${selectedPalier} ?`)) {
-                      await onResetPalier(selectedPalier);
-                      setSelectedPalier(null);
+                  onClick={() => {
+                    if (selectedPalier) {
+                      showAlert(
+                        `Êtes-vous sûr de vouloir réinitialiser le palier ${selectedPalier} ?`,
+                        async () => {
+                          await onResetPalier(selectedPalier);
+                          setSelectedPalier(null);
+                        },
+                        {
+                          title: `Reset palier ${selectedPalier}`,
+                          variant: "danger",
+                        }
+                      );
                     }
                   }}
                   className="flex-1"
@@ -366,6 +385,18 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
             </div>
           </div>
         </Modal>
+
+        {/* Alert Dialog */}
+        <AlertDialog
+          isOpen={alertState.isOpen}
+          onClose={closeAlert}
+          onConfirm={confirmAlert}
+          title={alertState.title}
+          message={alertState.message}
+          variant={alertState.variant}
+          confirmText="Confirmer"
+          cancelText="Annuler"
+        />
       </div>
   );
 }
