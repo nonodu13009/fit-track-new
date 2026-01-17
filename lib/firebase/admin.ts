@@ -28,19 +28,49 @@ function getAdminApp(): App {
     return adminApp;
   }
 
-  // Vérifier les variables d'environnement
-  const serviceAccount = {
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  };
+  // Vérifier les variables d'environnement d'abord
+  let serviceAccount: any = null;
 
-  if (!serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.clientEmail) {
+  // Option 1: Variables d'environnement (production)
+  if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+    serviceAccount = {
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    };
+  } else {
+    // Option 2: Fichier service account JSON (développement local uniquement, pas dans Next.js build)
+    // On essaie seulement en runtime Node.js pour les scripts
+    if (typeof window === "undefined" && typeof require !== "undefined") {
+      try {
+        const { readFileSync } = require("fs");
+        const { join } = require("path");
+        const serviceAccountPath = join(process.cwd(), "fit-tracker-728e9-firebase-adminsdk-fbsvc-0b944afc06.json");
+        const serviceAccountFile = JSON.parse(readFileSync(serviceAccountPath, "utf-8"));
+        serviceAccount = {
+          projectId: serviceAccountFile.project_id,
+          privateKey: serviceAccountFile.private_key,
+          clientEmail: serviceAccountFile.client_email,
+        };
+      } catch (fileError) {
+        // Fichier non trouvé, continuer pour afficher l'erreur ci-dessous
+      }
+    }
+    
+    if (!serviceAccount) {
+      throw new Error(
+        "❌ Variables d'environnement Firebase Admin manquantes :\n" +
+        "- FIREBASE_PRIVATE_KEY\n" +
+        "- FIREBASE_CLIENT_EMAIL\n" +
+        "\nVeuillez configurer ces variables dans Vercel (Settings > Environment Variables)\n" +
+        "Ou utiliser le fichier service account JSON local pour les scripts de migration."
+      );
+    }
+  }
+
+  if (!serviceAccount || !serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.clientEmail) {
     throw new Error(
-      "❌ Variables d'environnement Firebase Admin manquantes :\n" +
-      "- FIREBASE_PRIVATE_KEY\n" +
-      "- FIREBASE_CLIENT_EMAIL\n" +
-      "\nVeuillez configurer ces variables dans Vercel (Settings > Environment Variables)"
+      "❌ Configuration Firebase Admin invalide. Vérifiez les variables d'environnement ou le fichier service account JSON."
     );
   }
 

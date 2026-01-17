@@ -229,7 +229,7 @@ export function validateFundamental(
   checkpointsValidated: string[]
 ): boolean {
   const allCheckpointsValid = pas.checkpoints.every((cp) =>
-    checkpointsValidated.includes(cp)
+    checkpointsValidated.includes(cp.label)
   );
   const volumeOK = volumeCompleted >= pas.validationCriteria.volumeMin;
   const usedInSparring = progress.sessions.length >= 1;

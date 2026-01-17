@@ -60,16 +60,16 @@ async function migrateAllProgressions(dryRun: boolean = false): Promise<Migratio
         if (isOldFormat(oldProgress)) {
           console.log(`  🔄 Migration de ${userId}...`);
           
-          // Faire un backup dans la collection backup
-          if (!dryRun) {
-            await db.collection(BACKUP_COLLECTION).doc(userId).set({
-              ...oldProgress,
-              _backupDate: new Date().toISOString(),
-            });
-          }
-          
-          // Migrer les données
-          const newProgress: UserProgress = migrateOldProgressToNew(oldProgress);
+        // Faire un backup dans la collection backup
+        if (!dryRun) {
+          await db.collection(BACKUP_COLLECTION).doc(userId).set({
+            ...oldProgress,
+            _backupDate: new Date().toISOString(),
+          });
+        }
+        
+        // Migrer les données (cast nécessaire car doc.data() retourne DocumentData)
+        const newProgress: UserProgress = migrateOldProgressToNew(oldProgress as any);
           
           // Sauvegarder la nouvelle progression
           if (!dryRun) {
