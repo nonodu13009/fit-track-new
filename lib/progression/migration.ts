@@ -36,39 +36,22 @@ export function migrateOldProgressToNew(oldProgress: OldUserProgress): UserProgr
 
   // Migrer les steps vers les pas
   // Note: Cette migration est basique car la structure a complètement changé
-  // Les anciens steps ne correspondent pas directement aux nouveaux pas
-  // On peut soit réinitialiser, soit essayer de mapper les IDs si possible
-  for (const [stepId, stepProgress] of Object.entries(oldProgress.steps || {})) {
-    // Créer un pas progress initial avec les paliers
-    const pasProgress: PasProgress = {
-      paliersState: createInitialPaliers(),
-      updatedAt: stepProgress.updatedAt || new Date().toISOString(),
-      notes: stepProgress.notes,
-      volumeCompleted: 0,
-      sessions: [],
-    };
-
-    // Si l'ancien step était validé, on peut marquer les paliers K et E comme complétés
-    if (stepProgress.validatedAt) {
-      pasProgress.validatedAt = stepProgress.validatedAt;
-      pasProgress.paliersState.K = {
-        status: "completed",
-        repsCompleted: 10,
-        completedAt: stepProgress.validatedAt,
-      };
-      pasProgress.paliersState.E = {
-        status: "completed",
-        totalReps: 50,
-        cleanReps: 10,
-        completedAt: stepProgress.validatedAt,
-      };
-    }
-
-    // Essayer de mapper l'ancien stepId vers un nouveau pasId
-    // Pour simplifier, on ne fait pas de mapping automatique
-    // L'utilisateur devra recommencer sa progression
-    // Mais on garde les données pour référence
-  }
+  // Les anciens steps (25 steps en 4 blocs) ne correspondent pas directement aux nouveaux pas (64 pas en 5 cycles)
+  // Stratégie choisie : Réinitialiser la progression des pas mais préserver XP, niveau, badges, streak
+  // Les utilisateurs recommencent leur progression des techniques mais gardent leur niveau global
+  
+  // Option : Si on veut préserver les notes utilisateur, on peut les stocker dans un champ séparé
+  // Mais pour l'instant, on réinitialise complètement les pas pour un nouveau départ propre
+  
+  // Les pas seront créés progressivement quand l'utilisateur les débloquera
+  // newProgress.pas reste vide {} pour commencer une progression fraîche
+  
+  // Note : Si on voulait créer un mapping partiel, on pourrait faire :
+  // if (stepId.match(/^step-(\d+)-(\d+)$/)) {
+  //   const [, block, step] = stepId.match(/^step-(\d+)-(\d+)$/) || [];
+  //   // Tenter un mapping si possible (ex: step-01-01 → pas-01-01 si similaire)
+  //   // Mais pour l'instant, on préfère réinitialiser
+  // }
 
   return newProgress;
 }
