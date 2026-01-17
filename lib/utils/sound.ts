@@ -2,10 +2,52 @@
  * Utilitaire pour jouer des effets sonores de célébration
  */
 
+// Cache pour les fichiers audio chargés
+let ossAudio: HTMLAudioElement | null = null;
+
 /**
- * Joue un son de célébration simple (utilise Web Audio API)
+ * Charge le fichier audio "oss" une seule fois
+ */
+function loadOssAudio(): HTMLAudioElement | null {
+  if (typeof window === "undefined") return null;
+  
+  if (!ossAudio) {
+    try {
+      ossAudio = new Audio("/sounds/oss.mp3");
+      ossAudio.preload = "auto";
+      ossAudio.volume = 0.7;
+    } catch (error) {
+      console.debug("Could not load OSS audio file:", error);
+      return null;
+    }
+  }
+  return ossAudio;
+}
+
+/**
+ * Joue le son "oss" (fichier audio) ou un son synthétique en fallback
  */
 export function playCelebrationSound(): void {
+  const audio = loadOssAudio();
+  
+  if (audio) {
+    // Essayer de jouer le fichier audio "oss"
+    audio.currentTime = 0;
+    audio.play().catch((error) => {
+      // Si la lecture échoue (par exemple, pas de fichier), utiliser le fallback
+      console.debug("Could not play OSS audio, using fallback:", error);
+      playCelebrationSoundFallback();
+    });
+  } else {
+    // Fallback vers son synthétique si le fichier n'existe pas
+    playCelebrationSoundFallback();
+  }
+}
+
+/**
+ * Joue un son de célébration synthétique (fallback)
+ */
+function playCelebrationSoundFallback(): void {
   try {
     // Créer un contexte audio
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
