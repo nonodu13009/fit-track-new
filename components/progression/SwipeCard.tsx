@@ -76,7 +76,7 @@ export function SwipeCard({ pas, onSwipeShort, onSwipeLong, onClick }: SwipeCard
       info.point.y
     );
 
-    if (swipe && pas.status !== "LOCKED") {
+    if (swipe) {
       const swipeType = getSwipeType(swipe);
 
       if (swipeType === "short" && onSwipeShort) {
@@ -116,7 +116,7 @@ export function SwipeCard({ pas, onSwipeShort, onSwipeLong, onClick }: SwipeCard
             pas.status === "IN_PROGRESS"
               ? "ring-2 ring-accent-purple/50 shadow-glow-purple"
               : ""
-          } ${pas.status === "LOCKED" ? "opacity-50 cursor-not-allowed" : ""} ${
+          } ${pas.status === "LOCKED" ? "opacity-70" : ""} ${
             isSwiping ? "cursor-grabbing" : ""
           }`}
         >
@@ -155,7 +155,7 @@ export function SwipeCard({ pas, onSwipeShort, onSwipeLong, onClick }: SwipeCard
             )}
           </div>
 
-          {pas.status !== "LOCKED" && pas.progress && (
+          {pas.progress && (
             <div className="mt-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-gray-400">Progression</span>
@@ -170,14 +170,8 @@ export function SwipeCard({ pas, onSwipeShort, onSwipeLong, onClick }: SwipeCard
             </div>
           )}
 
-          {pas.status === "LOCKED" && (
-            <div className="mt-2 text-sm text-gray-500">
-              Prérequis non remplis
-            </div>
-          )}
-
           {/* Indicateur de swipe */}
-          {!isSwiping && pas.status !== "LOCKED" && (
+          {!isSwiping && (
             <div className="absolute top-2 right-2 text-xs text-gray-500">
               ← Swipe
             </div>

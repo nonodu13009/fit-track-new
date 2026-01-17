@@ -17,16 +17,21 @@ import { calculateMasteryTier, canValidatePas } from "./validation";
 
 /**
  * Vérifie si un pas est verrouillé (prérequis non remplis)
+ * En mode développement, tous les pas sont débloqués pour faciliter le travail sur le contenu
  */
 function isPasLocked(pas: Pas, progress: UserProgress): boolean {
-  if (!pas.prerequisites || pas.prerequisites.length === 0) {
-    return false;
-  }
+  // TODO: Réactiver le verrouillage en production
+  // En phase de dev, ouvrir toutes les cartes pour étudier le contenu
+  return false;
 
-  return pas.prerequisites.some((prereqId) => {
-    const prereqProgress = progress.pas[prereqId];
-    return !prereqProgress || !prereqProgress.validatedAt;
-  });
+  // Code original (désactivé pour le dev) :
+  // if (!pas.prerequisites || pas.prerequisites.length === 0) {
+  //   return false;
+  // }
+  // return pas.prerequisites.some((prereqId) => {
+  //   const prereqProgress = progress.pas[prereqId];
+  //   return !prereqProgress || !prereqProgress.validatedAt;
+  // });
 }
 
 /**
