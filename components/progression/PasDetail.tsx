@@ -166,6 +166,109 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
     }
   };
 
+  const handleResetPalier = async (palierKey: "K" | "E" | "A" | "I") => {
+    setIsUpdating(true);
+    try {
+      let resetPalier: any;
+
+      if (palierKey === "K") {
+        resetPalier = { status: "not_started", repsCompleted: 0 };
+      } else if (palierKey === "E") {
+        resetPalier = { status: "not_started", totalReps: 0, cleanReps: 0 };
+      } else if (palierKey === "A") {
+        resetPalier = {
+          status: "not_started",
+          positionalTest: { attempts: 0, successes: 0, successRate: 0, sessions: [] },
+          targetRate: pas.validationCriteria.positionalTest.targetRate,
+        };
+      } else {
+        // Palier I
+        resetPalier = {
+          status: "not_started",
+          freeSparringTest: { rounds: 0, occurrences: 0, sessions: [] },
+          occurrencesMin: pas.validationCriteria.freeSparringTest.occurrencesMin,
+          sessionsRequired: pas.validationCriteria.stability.sessionsRequired,
+        };
+      }
+
+      const updatedPasProgress: PasProgress = {
+        ...pasProgress,
+        paliersState: {
+          ...pasProgress.paliersState,
+          [palierKey]: resetPalier,
+        },
+        updatedAt: new Date().toISOString(),
+      };
+
+      previousStatusRef.current[palierKey] = "not_started";
+
+      const updatedProgress: UserProgress = {
+        ...progress,
+        pas: {
+          ...progress.pas,
+          [pas.id]: updatedPasProgress,
+        },
+      };
+
+      await onUpdate(updatedProgress);
+      success(`Palier ${palierKey} réinitialisé !`);
+    } catch (error) {
+      console.error("Erreur lors de la réinitialisation:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleResetAllPaliers = async () => {
+    setIsUpdating(true);
+    try {
+      const updatedPasProgress: PasProgress = {
+        ...pasProgress,
+        paliersState: {
+          K: { status: "not_started", repsCompleted: 0 },
+          E: { status: "not_started", totalReps: 0, cleanReps: 0 },
+          A: {
+            status: "not_started",
+            positionalTest: { attempts: 0, successes: 0, successRate: 0, sessions: [] },
+            targetRate: pas.validationCriteria.positionalTest.targetRate,
+          },
+          I: {
+            status: "not_started",
+            freeSparringTest: { rounds: 0, occurrences: 0, sessions: [] },
+            occurrencesMin: pas.validationCriteria.freeSparringTest.occurrencesMin,
+            sessionsRequired: pas.validationCriteria.stability.sessionsRequired,
+          },
+        },
+        updatedAt: new Date().toISOString(),
+        volumeCompleted: 0,
+        validatedAt: undefined,
+        masteryTier: undefined,
+      };
+
+      previousStatusRef.current = {
+        K: "not_started",
+        E: "not_started",
+        A: "not_started",
+        I: "not_started",
+      };
+
+      const updatedProgress: UserProgress = {
+        ...progress,
+        pas: {
+          ...progress.pas,
+          [pas.id]: updatedPasProgress,
+        },
+      };
+
+      await onUpdate(updatedProgress);
+      success("Tous les paliers ont été réinitialisés !");
+    } catch (error) {
+      console.error("Erreur lors de la réinitialisation:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleValidate = async () => {
     if (!canPasBeValidated(pas, progress)) {
       return;
@@ -324,6 +427,8 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
               pas={pas}
               pasProgress={pasProgress}
               onUpdate={handleUpdatePalier}
+              onResetPalier={handleResetPalier}
+              onResetAll={handleResetAllPaliers}
             />
           </div>
 

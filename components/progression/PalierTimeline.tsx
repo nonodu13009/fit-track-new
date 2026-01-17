@@ -12,9 +12,11 @@ interface PalierTimelineProps {
   pas: Pas;
   pasProgress: PasProgress;
   onUpdate: (updatedPalier: "K" | "E" | "A" | "I", value: any) => Promise<void>;
+  onResetPalier?: (palierKey: "K" | "E" | "A" | "I") => Promise<void>;
+  onResetAll?: () => Promise<void>;
 }
 
-export function PalierTimeline({ pas, pasProgress, onUpdate }: PalierTimelineProps) {
+export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onResetAll }: PalierTimelineProps) {
   const [selectedPalier, setSelectedPalier] = useState<"K" | "E" | "A" | "I" | null>(null);
   const [kReps, setKReps] = useState(pasProgress.paliersState.K.repsCompleted.toString());
   const [eTotalReps, setETotalReps] = useState(pasProgress.paliersState.E.totalReps.toString());
@@ -123,7 +125,23 @@ export function PalierTimeline({ pas, pasProgress, onUpdate }: PalierTimelinePro
 
   return (
     <div className="space-y-4">
-        <h2 className="text-lg font-semibold mb-4">Paliers de validation</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Paliers de validation</h2>
+          {onResetAll && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={async () => {
+                if (confirm("Êtes-vous sûr de vouloir réinitialiser TOUS les paliers à zéro ? Cette action est irréversible.")) {
+                  await onResetAll();
+                }
+              }}
+              className="text-xs"
+            >
+              Reset global
+            </Button>
+          )}
+        </div>
         
         {/* Timeline horizontale */}
         <div className="relative flex items-center justify-between gap-4 py-6 px-2">
@@ -320,6 +338,21 @@ export function PalierTimeline({ pas, pasProgress, onUpdate }: PalierTimelinePro
             )}
 
             <div className="flex gap-3 pt-4">
+              {onResetPalier && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={async () => {
+                    if (selectedPalier && confirm(`Êtes-vous sûr de vouloir réinitialiser le palier ${selectedPalier} ?`)) {
+                      await onResetPalier(selectedPalier);
+                      setSelectedPalier(null);
+                    }
+                  }}
+                  className="flex-1"
+                >
+                  Reset
+                </Button>
+              )}
               <Button
                 variant="secondary"
                 className="flex-1"
