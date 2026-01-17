@@ -155,16 +155,24 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
         
         {/* Timeline horizontale */}
         <div className="relative flex items-center justify-between gap-4 py-6 px-2">
-          {/* Ligne de connexion de fond (gris) - complète */}
-          <div className="absolute left-16 right-16 top-9 h-1 bg-gray-700/30 rounded-full -z-10" />
+          {/* Ligne de connexion de fond (gris) - complète et visible */}
+          {/* Position au centre vertical des nœuds (56px / 2 = 28px) + padding top (24px) */}
+          <div 
+            className="absolute left-14 right-14 h-1.5 bg-gray-600/70 rounded-full"
+            style={{ 
+              top: '52px', // Centre du premier nœud (24px padding + 28px centre)
+            }}
+          />
           
           {/* Ligne de progression (verte) qui s'étend selon les paliers complétés */}
           {completedCount > 0 && (
             <div 
-              className="absolute left-16 top-9 h-1 bg-gradient-to-r from-green-500 via-green-400 to-green-500 rounded-full -z-10 transition-all duration-700 ease-out shadow-lg shadow-green-500/30"
+              className="absolute left-14 h-1.5 bg-gradient-to-r from-green-500 via-green-400 to-green-500 rounded-full transition-all duration-700 ease-out"
               style={{ 
-                width: `calc(${progressionPercent}% - 4rem)`,
-                maxWidth: 'calc(100% - 8rem)'
+                top: '52px', // Même position que la ligne de fond
+                width: `${progressionPercent}%`,
+                maxWidth: 'calc(100% - 7rem)',
+                boxShadow: '0 2px 12px rgba(34, 197, 94, 0.7), 0 0 16px rgba(34, 197, 94, 0.4)'
               }}
             />
           )}
@@ -175,7 +183,7 @@ export function PalierTimeline({ pas, pasProgress, onUpdate, onResetPalier, onRe
             const isInProgress = palier.status === "in_progress";
             
             return (
-            <div key={palier.key} className="relative flex-1 flex flex-col items-center z-10">
+            <div key={palier.key} className="relative flex-1 flex flex-col items-center" style={{ zIndex: 10 }}>
               
               {/* Nœud cliquable */}
               <button
