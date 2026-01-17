@@ -77,6 +77,7 @@ export interface Paliers {
 export interface Checkpoint {
   label: string;
   explanation?: string;
+  youtubeUrl?: string; // URL de recherche YouTube pré-remplie
 }
 
 export interface ValidationCriteria {
