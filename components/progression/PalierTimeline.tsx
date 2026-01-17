@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Pas, PasProgress } from "@/lib/progression/types";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
