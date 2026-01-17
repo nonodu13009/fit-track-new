@@ -13,6 +13,7 @@ import { MasteryBadge } from "./MasteryBadge";
 import { PalierTimeline } from "./PalierTimeline";
 import { ConfettiEffect } from "./ConfettiEffect";
 import { useToast } from "@/hooks/useToast";
+import { playCelebrationSound } from "@/lib/utils/sound";
 
 interface PasDetailProps {
   pas: Pas;
@@ -143,6 +144,7 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
       // Vérifier si le palier vient d'être complété
       if (previousStatus !== "completed" && updatedPalier.status === "completed") {
         setShowConfetti(true);
+        playCelebrationSound();
         success(`Palier ${palierKey} complété ! 🎉`);
       } else {
         success(`Palier ${palierKey} mis à jour !`);
@@ -293,6 +295,7 @@ export function PasDetail({ pas, progress, onUpdate }: PasDetailProps) {
 
       await onUpdate(updatedProgress);
       setShowConfetti(true);
+      playCelebrationSound();
       success("Pas validé avec succès ! 🎉");
     } catch (error) {
       console.error("Erreur lors de la validation:", error);

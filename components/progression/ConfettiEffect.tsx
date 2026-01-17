@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { motion } from "motion/react";
+import { playSuccessSound } from "@/lib/utils/sound";
 
 interface ConfettiEffectProps {
   show: boolean;
@@ -10,11 +11,16 @@ interface ConfettiEffectProps {
 
 export function ConfettiEffect({ show, onComplete }: ConfettiEffectProps) {
   useEffect(() => {
-    if (show && onComplete) {
-      const timer = setTimeout(() => {
-        onComplete();
-      }, 2000);
-      return () => clearTimeout(timer);
+    if (show) {
+      // Jouer le son de succès au début de l'animation
+      playSuccessSound();
+      
+      if (onComplete) {
+        const timer = setTimeout(() => {
+          onComplete();
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
     }
   }, [show, onComplete]);
 
@@ -24,7 +30,8 @@ export function ConfettiEffect({ show, onComplete }: ConfettiEffectProps) {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-      {Array.from({ length: 50 }).map((_, i) => {
+      {/* Explosion principale de confetti */}
+      {Array.from({ length: 80 }).map((_, i) => {
         const angle = (i * 360) / 50;
         const distance = 200 + Math.random() * 100;
         const x = Math.cos((angle * Math.PI) / 180) * distance;
@@ -35,9 +42,10 @@ export function ConfettiEffect({ show, onComplete }: ConfettiEffectProps) {
         return (
           <motion.div
             key={i}
-            className="absolute top-1/2 left-1/2 w-3 h-3 rounded-full"
+            className="absolute top-1/2 left-1/2 w-4 h-4 rounded-full"
             style={{
               backgroundColor: color,
+              boxShadow: `0 0 10px ${color}`,
             }}
             initial={{
               x: 0,
@@ -60,8 +68,8 @@ export function ConfettiEffect({ show, onComplete }: ConfettiEffectProps) {
           />
         );
       })}
-      {/* Particules supplémentaires en forme de pétard */}
-      {Array.from({ length: 20 }).map((_, i) => {
+      {/* Particules supplémentaires en forme de pétard/étincelles */}
+      {Array.from({ length: 40 }).map((_, i) => {
         const angle = Math.random() * 360;
         const distance = 150 + Math.random() * 100;
         const x = Math.cos((angle * Math.PI) / 180) * distance;
@@ -71,10 +79,10 @@ export function ConfettiEffect({ show, onComplete }: ConfettiEffectProps) {
         return (
           <motion.div
             key={`spark-${i}`}
-            className="absolute top-1/2 left-1/2 w-1 h-1 rounded-full"
+            className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full"
             style={{
               backgroundColor: color,
-              boxShadow: `0 0 6px ${color}`,
+              boxShadow: `0 0 12px ${color}, 0 0 24px ${color}40`,
             }}
             initial={{
               x: 0,
