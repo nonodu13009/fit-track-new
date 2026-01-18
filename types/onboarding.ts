@@ -41,6 +41,10 @@ export const AVAILABLE_SPORTS = [
 
 export const JJB_GRADES = [
   "Ceinture Blanche",
+  "Ceinture Blanche 1 barrette",
+  "Ceinture Blanche 2 barrettes",
+  "Ceinture Blanche 3 barrettes",
+  "Ceinture Blanche 4 barrettes",
   "Ceinture Bleue",
   "Ceinture Bleue 1 barrette",
   "Ceinture Bleue 2 barrettes",
