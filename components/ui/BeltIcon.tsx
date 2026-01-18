@@ -11,7 +11,10 @@ interface BeltIconProps {
 }
 
 export function BeltIcon({ grade, size = 32, className = "" }: BeltIconProps) {
-  const beltInfo = parseBeltGrade(grade);
+  // Essaie de détecter le type (JJB ou Judo) en analysant le grade
+  const isJudo = grade.includes("Jaune") || grade.includes("Orange") || grade.includes("Verte") || 
+                 (grade.includes("Noire") && (grade.includes("Dan") || grade.includes("dan")));
+  const beltInfo = parseBeltGrade(grade, isJudo ? "judo" : "jjb");
   
   if (!beltInfo) {
     return null;
@@ -46,8 +49,8 @@ export function BeltIcon({ grade, size = 32, className = "" }: BeltIconProps) {
         strokeWidth="1.5"
       />
       
-      {/* Barrettes */}
-      {beltInfo.barrettes > 0 && (
+      {/* Barrettes (JJB uniquement) */}
+      {beltInfo.type === "jjb" && beltInfo.barrettes > 0 && (
         <>
           {Array.from({ length: beltInfo.barrettes }).map((_, index) => (
             <rect

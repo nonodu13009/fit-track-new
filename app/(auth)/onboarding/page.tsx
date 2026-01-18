@@ -122,7 +122,7 @@ export default function OnboardingStep1Page() {
                         <label className="mb-2 block text-sm font-medium text-gray-400">
                           {sport.name}
                         </label>
-                        {sport.id === "jjb" ? (
+                        {sport.id === "jjb" || sport.id === "judo" ? (
                           <BeltSelect
                             value={sport.grade || ""}
                             onChange={(grade) => updateGrade(sport.id, grade)}

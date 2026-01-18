@@ -1,19 +1,22 @@
 /**
- * Utilitaires pour les ceintures JJB
+ * Utilitaires pour les ceintures JJB et Judo
  */
 
-export type BeltColor = "white" | "blue" | "purple" | "brown" | "black";
+export type BeltColor = "white" | "blue" | "purple" | "brown" | "black" | "yellow" | "orange" | "green";
+export type BeltType = "jjb" | "judo";
 
 export interface BeltInfo {
   color: BeltColor;
-  barrettes: number; // 0 = ceinture seule, 1-4 = nombre de barrettes
+  barrettes: number; // 0 = ceinture seule, 1-4 = nombre de barrettes (JJB uniquement)
+  dan?: number; // 1-10 = dan pour ceinture noire (Judo uniquement)
   name: string;
+  type: BeltType;
 }
 
 /**
- * Extrait les informations d'une ceinture à partir d'un grade
+ * Extrait les informations d'une ceinture JJB à partir d'un grade
  */
-export function parseBeltGrade(grade: string): BeltInfo | null {
+export function parseJjbBeltGrade(grade: string): BeltInfo | null {
   // Format: "Ceinture [Couleur] [X barrette(s)]"
   
   if (grade.includes("Blanche")) {
@@ -23,6 +26,7 @@ export function parseBeltGrade(grade: string): BeltInfo | null {
       color: "white",
       barrettes,
       name: grade,
+      type: "jjb",
     };
   }
   
@@ -33,6 +37,7 @@ export function parseBeltGrade(grade: string): BeltInfo | null {
       color: "blue",
       barrettes,
       name: grade,
+      type: "jjb",
     };
   }
   
@@ -43,6 +48,7 @@ export function parseBeltGrade(grade: string): BeltInfo | null {
       color: "purple",
       barrettes,
       name: grade,
+      type: "jjb",
     };
   }
   
@@ -53,6 +59,7 @@ export function parseBeltGrade(grade: string): BeltInfo | null {
       color: "brown",
       barrettes,
       name: grade,
+      type: "jjb",
     };
   }
   
@@ -61,6 +68,7 @@ export function parseBeltGrade(grade: string): BeltInfo | null {
       color: "black",
       barrettes: 0,
       name: grade,
+      type: "jjb",
     };
   }
   
@@ -68,10 +76,108 @@ export function parseBeltGrade(grade: string): BeltInfo | null {
 }
 
 /**
- * Couleurs CSS pour chaque ceinture
+ * Extrait les informations d'une ceinture Judo à partir d'un grade
+ */
+export function parseJudoBeltGrade(grade: string): BeltInfo | null {
+  // Format: "Ceinture [Couleur]" ou "Ceinture Noire Xème Dan"
+  
+  if (grade.includes("Blanche")) {
+    return {
+      color: "white",
+      barrettes: 0,
+      name: grade,
+      type: "judo",
+    };
+  }
+  
+  if (grade.includes("Jaune")) {
+    return {
+      color: "yellow",
+      barrettes: 0,
+      name: grade,
+      type: "judo",
+    };
+  }
+  
+  if (grade.includes("Orange")) {
+    return {
+      color: "orange",
+      barrettes: 0,
+      name: grade,
+      type: "judo",
+    };
+  }
+  
+  if (grade.includes("Verte")) {
+    return {
+      color: "green",
+      barrettes: 0,
+      name: grade,
+      type: "judo",
+    };
+  }
+  
+  if (grade.includes("Bleue")) {
+    return {
+      color: "blue",
+      barrettes: 0,
+      name: grade,
+      type: "judo",
+    };
+  }
+  
+  if (grade.includes("Marron")) {
+    return {
+      color: "brown",
+      barrettes: 0,
+      name: grade,
+      type: "judo",
+    };
+  }
+  
+  if (grade.includes("Noire")) {
+    // Extraire le dan si présent
+    const danMatch = grade.match(/(\d+)(?:ème|er)/);
+    const dan = danMatch ? parseInt(danMatch[1], 10) : undefined;
+    return {
+      color: "black",
+      barrettes: 0,
+      dan,
+      name: grade,
+      type: "judo",
+    };
+  }
+  
+  return null;
+}
+
+/**
+ * Extrait les informations d'une ceinture (JJB ou Judo) à partir d'un grade
+ */
+export function parseBeltGrade(grade: string, type?: BeltType): BeltInfo | null {
+  // Essaie d'abord JJB si type non spécifié ou si type = "jjb"
+  if (!type || type === "jjb") {
+    const jjbResult = parseJjbBeltGrade(grade);
+    if (jjbResult) return jjbResult;
+  }
+  
+  // Essaie ensuite Judo si type non spécifié ou si type = "judo"
+  if (!type || type === "judo") {
+    const judoResult = parseJudoBeltGrade(grade);
+    if (judoResult) return judoResult;
+  }
+  
+  return null;
+}
+
+/**
+ * Couleurs CSS pour chaque ceinture (JJB et Judo)
  */
 export const BELT_COLORS: Record<BeltColor, string> = {
   white: "#FFFFFF",
+  yellow: "#FFD700",
+  orange: "#FF8C00",
+  green: "#00AA00",
   blue: "#0033FF",
   purple: "#8000FF",
   brown: "#8B4513",
