@@ -201,6 +201,7 @@ export default function ProfilePage() {
                         onChange={(grade) => updateGrade(sport.id, grade)}
                         grades={grades}
                         placeholder="Sélectionnez votre grade"
+                        type={sport.id === "judo" ? "judo" : "jjb"}
                       />
                     ) : (
                       <select

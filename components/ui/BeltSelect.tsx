@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { CaretDown, Check } from "@phosphor-icons/react";
 import { BeltIcon } from "./BeltIcon";
-import { parseBeltGrade } from "@/lib/utils/belt";
+import { parseBeltGrade, type BeltType } from "@/lib/utils/belt";
 
 interface BeltSelectProps {
   value: string;
@@ -11,6 +11,7 @@ interface BeltSelectProps {
   grades: readonly string[];
   placeholder?: string;
   className?: string;
+  type?: BeltType; // "jjb" ou "judo" pour forcer le type
 }
 
 export function BeltSelect({
@@ -19,6 +20,7 @@ export function BeltSelect({
   grades,
   placeholder = "Sélectionnez votre grade",
   className = "",
+  type,
 }: BeltSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const selectRef = useRef<HTMLDivElement>(null);
@@ -38,7 +40,7 @@ export function BeltSelect({
   }, [isOpen]);
 
   const selectedGrade = value || null;
-  const selectedBeltInfo = selectedGrade ? parseBeltGrade(selectedGrade) : null;
+  const selectedBeltInfo = selectedGrade ? parseBeltGrade(selectedGrade, type) : null;
 
   return (
     <div ref={selectRef} className={`relative ${className}`}>
@@ -78,7 +80,7 @@ export function BeltSelect({
           <div className="py-2">
             {grades.map((grade) => {
               const isSelected = grade === value;
-              const beltInfo = parseBeltGrade(grade);
+              const beltInfo = parseBeltGrade(grade, type);
 
               return (
                 <button
@@ -92,9 +94,16 @@ export function BeltSelect({
                     isSelected ? "bg-accent-purple/20" : ""
                   }`}
                 >
-                  {beltInfo && (
+                  {beltInfo ? (
                     <>
                       <BeltIcon grade={grade} size={24} />
+                      <span className="text-white flex-1">{grade}</span>
+                      {isSelected && (
+                        <Check size={18} weight="bold" className="text-accent-purple flex-shrink-0" />
+                      )}
+                    </>
+                  ) : (
+                    <>
                       <span className="text-white flex-1">{grade}</span>
                       {isSelected && (
                         <Check size={18} weight="bold" className="text-accent-purple flex-shrink-0" />
