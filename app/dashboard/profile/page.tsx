@@ -141,7 +141,7 @@ export default function ProfilePage() {
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* Sports */}
-        <Card variant="glass" className="p-6 bg-gradient-to-br from-surface to-accent-purple/5">
+        <Card variant="glass" className="p-6 bg-gradient-to-br from-accent-purple/10 via-surface to-accent-purple/5 border-accent-purple/20">
           <h2 className="mb-4 text-lg font-semibold text-white flex items-center gap-2">
             <Barbell size={20} className="text-accent-purple" />
             Sports pratiqués
@@ -226,7 +226,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* Données physiques */}
-        <Card variant="glass" className="p-6 bg-gradient-to-br from-surface to-accent-cyan/5">
+        <Card variant="glass" className="p-6 bg-gradient-to-bl from-accent-cyan/10 via-surface to-accent-cyan/5 border-accent-cyan/20">
           <h2 className="mb-4 text-lg font-semibold text-white flex items-center gap-2">
             <User size={20} className="text-accent-cyan" />
             Données physiques
@@ -269,7 +269,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* Objectif */}
-        <Card variant="glass" className="p-6 bg-gradient-to-br from-surface to-accent-lime/5">
+        <Card variant="glass" className="p-6 bg-gradient-to-tr from-accent-lime/10 via-surface to-accent-lime/5 border-accent-lime/20">
           <h2 className="mb-4 text-lg font-semibold text-white flex items-center gap-2">
             <Target size={20} className="text-accent-lime" />
             Objectif
