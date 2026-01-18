@@ -27,6 +27,7 @@ export function BeltSelect({
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const selectRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Calculer la position du dropdown
   useEffect(() => {
@@ -43,13 +44,20 @@ export function BeltSelect({
   // Fermer le dropdown si clic en dehors
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (selectRef.current && !selectRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const isClickInsideSelect = selectRef.current?.contains(target);
+      const isClickInsideDropdown = dropdownRef.current?.contains(target);
+      
+      if (!isClickInsideSelect && !isClickInsideDropdown) {
         setIsOpen(false);
       }
     };
 
     if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      // Petit délai pour éviter de fermer immédiatement après l'ouverture
+      setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+      }, 0);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [isOpen]);
@@ -59,6 +67,7 @@ export function BeltSelect({
 
   const dropdownContent = (
     <div
+      ref={dropdownRef}
       className="fixed z-[100] max-h-64 overflow-y-auto rounded-lg border border-white/10 bg-surface shadow-lg"
       style={{
         top: `${dropdownPosition.top}px`,
