@@ -30,6 +30,12 @@ export function BeltIcon({ grade, size = 32, className = "" }: BeltIconProps) {
   const barretteHeight = size * 0.15;
   const barretteSpacing = size * 0.2;
 
+  // Pour la ceinture noire sur fond sombre, on utilise un gris très foncé avec une bordure claire
+  const isBlackBelt = beltInfo.color === "black";
+  const effectiveBeltColor = isBlackBelt ? "#1a1a1a" : beltColor; // Gris très foncé au lieu de noir pur
+  const effectiveStrokeColor = isBlackBelt ? "#FFFFFF" : "#000000"; // Bordure blanche pour ceinture noire
+  const effectiveStrokeWidth = isBlackBelt ? 2.5 : 1.5; // Bordure plus épaisse pour ceinture noire
+
   return (
     <svg
       width={width}
@@ -44,9 +50,9 @@ export function BeltIcon({ grade, size = 32, className = "" }: BeltIconProps) {
         y={height * 0.3}
         width={width}
         height={height * 0.4}
-        fill={beltColor}
-        stroke="#000000"
-        strokeWidth="1.5"
+        fill={effectiveBeltColor}
+        stroke={effectiveStrokeColor}
+        strokeWidth={effectiveStrokeWidth}
       />
       
       {/* Barrettes (JJB uniquement) */}
@@ -60,8 +66,8 @@ export function BeltIcon({ grade, size = 32, className = "" }: BeltIconProps) {
               width={barretteWidth}
               height={barretteHeight}
               fill={barretteColor}
-              stroke="#000000"
-              strokeWidth="0.5"
+              stroke={isBlackBelt ? "#FFFFFF" : "#000000"}
+              strokeWidth={isBlackBelt ? 1 : 0.5}
             />
           ))}
         </>
