@@ -16,3 +16,5 @@ export {
   type ToastType,
 } from "./Toast";
 export { AlertDialog, type AlertDialogProps } from "./AlertDialog";
+export { BeltSelect } from "./BeltSelect";
+export { BeltIcon } from "./BeltIcon";

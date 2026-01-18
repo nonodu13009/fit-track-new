@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Button, Card, Badge } from "@/components/ui";
+import { Button, Card, Badge, BeltSelect } from "@/components/ui";
 import {
   AVAILABLE_SPORTS,
   JJB_GRADES,
@@ -122,18 +122,27 @@ export default function OnboardingStep1Page() {
                         <label className="mb-2 block text-sm font-medium text-gray-400">
                           {sport.name}
                         </label>
-                        <select
-                          value={sport.grade || ""}
-                          onChange={(e) => updateGrade(sport.id, e.target.value)}
-                          className="w-full rounded-lg border border-white/10 bg-surface px-4 py-2 text-white transition-colors focus:border-accent-purple focus:outline-none focus:ring-2 focus:ring-accent-purple/50"
-                        >
-                          <option value="">Sélectionnez votre grade</option>
-                          {grades.map((grade) => (
-                            <option key={grade} value={grade}>
-                              {grade}
-                            </option>
-                          ))}
-                        </select>
+                        {sport.id === "jjb" ? (
+                          <BeltSelect
+                            value={sport.grade || ""}
+                            onChange={(grade) => updateGrade(sport.id, grade)}
+                            grades={grades}
+                            placeholder="Sélectionnez votre grade"
+                          />
+                        ) : (
+                          <select
+                            value={sport.grade || ""}
+                            onChange={(e) => updateGrade(sport.id, e.target.value)}
+                            className="w-full rounded-lg border border-white/10 bg-surface px-4 py-2 text-white transition-colors focus:border-accent-purple focus:outline-none focus:ring-2 focus:ring-accent-purple/50"
+                          >
+                            <option value="">Sélectionnez votre grade</option>
+                            {grades.map((grade) => (
+                              <option key={grade} value={grade}>
+                                {grade}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     );
                   })}
