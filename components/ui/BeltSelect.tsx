@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { CaretDown, Check } from "@phosphor-icons/react";
 import { BeltIcon } from "./BeltIcon";
 import { parseBeltGrade, type BeltType } from "@/lib/utils/belt";
@@ -23,7 +24,21 @@ export function BeltSelect({
   type,
 }: BeltSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const selectRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Calculer la position du dropdown
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8, // 8px = mt-2
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, [isOpen]);
 
   // Fermer le dropdown si clic en dehors
   useEffect(() => {
@@ -42,10 +57,60 @@ export function BeltSelect({
   const selectedGrade = value || null;
   const selectedBeltInfo = selectedGrade ? parseBeltGrade(selectedGrade, type) : null;
 
+  const dropdownContent = (
+    <div
+      className="fixed z-[100] max-h-64 overflow-y-auto rounded-lg border border-white/10 bg-surface shadow-lg"
+      style={{
+        top: `${dropdownPosition.top}px`,
+        left: `${dropdownPosition.left}px`,
+        width: `${dropdownPosition.width}px`,
+      }}
+    >
+      <div className="py-2">
+        {grades.map((grade) => {
+          const isSelected = grade === value;
+          const beltInfo = parseBeltGrade(grade, type);
+
+          return (
+            <button
+              key={grade}
+              type="button"
+              onClick={() => {
+                onChange(grade);
+                setIsOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5 ${
+                isSelected ? "bg-accent-purple/20" : ""
+              }`}
+            >
+              {beltInfo ? (
+                <>
+                  <BeltIcon grade={grade} size={24} />
+                  <span className="text-white flex-1">{grade}</span>
+                  {isSelected && (
+                    <Check size={18} weight="bold" className="text-accent-purple flex-shrink-0" />
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="text-white flex-1">{grade}</span>
+                  {isSelected && (
+                    <Check size={18} weight="bold" className="text-accent-purple flex-shrink-0" />
+                  )}
+                </>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <div ref={selectRef} className={`relative ${className}`}>
       {/* Bouton déclencheur */}
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full rounded-lg border px-4 py-2 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-accent-purple/50 ${
@@ -74,48 +139,8 @@ export function BeltSelect({
         </div>
       </button>
 
-      {/* Dropdown */}
-      {isOpen && (
-        <div className="absolute z-50 mt-2 w-full max-h-64 overflow-y-auto rounded-lg border border-white/10 bg-surface shadow-lg">
-          <div className="py-2">
-            {grades.map((grade) => {
-              const isSelected = grade === value;
-              const beltInfo = parseBeltGrade(grade, type);
-
-              return (
-                <button
-                  key={grade}
-                  type="button"
-                  onClick={() => {
-                    onChange(grade);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5 ${
-                    isSelected ? "bg-accent-purple/20" : ""
-                  }`}
-                >
-                  {beltInfo ? (
-                    <>
-                      <BeltIcon grade={grade} size={24} />
-                      <span className="text-white flex-1">{grade}</span>
-                      {isSelected && (
-                        <Check size={18} weight="bold" className="text-accent-purple flex-shrink-0" />
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-white flex-1">{grade}</span>
-                      {isSelected && (
-                        <Check size={18} weight="bold" className="text-accent-purple flex-shrink-0" />
-                      )}
-                    </>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Dropdown avec portail pour éviter les problèmes d'overflow */}
+      {isOpen && typeof window !== "undefined" && createPortal(dropdownContent, document.body)}
     </div>
   );
 }
